@@ -1,51 +1,98 @@
-# Code Lessons Learned
+# Error Resolution Database
 
-This file tracks compilation errors encountered during AI code generation and their solutions. This creates a feedback loop to improve error resolution speed and consistency.
+## Purpose and Scope
 
-## How to Use This File
+This specification defines a **living knowledge base** that captures compilation errors, test failures, and runtime issues encountered during AI code generation for the LLMmanagement package, along with their proven fixes. This system enables instant error resolution, enforces consistency across the codebase, and creates a self-improving AI development environment.
 
-1. **Before fixing any error**: Search this file for the error message or similar issues
-2. **After solving a new error**: Add the error and solution to this file
-3. **Keep solutions specific**: Include exact error messages and precise solutions
-4. **Update regularly**: This file should grow with each development session
+**Critical Requirement**: Every error encountered must be documented with its proven solution to prevent re-solving the same problems and ensure consistent fixes throughout the codebase.
 
-## Error Categories
+**Swift 6 + Default MainActor Context**: This project uses Swift 6 with default actor isolation set to MainActor, which changes common error patterns compared to manual @MainActor annotation projects.
 
-### Swift Compilation Errors
+## Quick Reference Index
 
-### Error: Public SwiftData model requires public properties
-**Error Message**:
+- [High-Frequency Errors](#high-frequency-errors)
+- [Compilation Errors](#compilation-errors)
+- [SwiftData Errors](#swiftdata-errors)
+- [SwiftUI Errors](#swiftui-errors)
+- [Test Failure Errors](#test-failure-errors)
+- [Runtime Errors](#runtime-errors)
+- [Search Guidelines](#search-guidelines)
+
+## Error Entry Template
+
+### Error ID: ERR-[CATEGORY]-[NUMBER]
+- **Discovery Method**: [Compilation | Unit Test | Integration Test | Runtime]
+- **Frequency**: [Count of occurrences - updated each time encountered]
+- **Error Message**: [Exact error text from compiler/test/runtime]
+- **Test Case**: [Specific test that revealed error, if applicable]
+- **Context**: [When/where this occurs - file types, operations, patterns]
+- **Root Cause**: [Technical explanation of why this happens]
+- **Proven Fix**: [Step-by-step resolution that has been verified]
+- **Code Before**: [Example of error-causing code]
+- **Code After**: [Example of fixed code]
+- **Prevention Pattern**: [How to avoid this error in future code generation]
+- **Verification**: [How to confirm the fix works]
+- **Related Errors**: [Links to similar error IDs]
+- **Last Updated**: [Date of most recent update]
+
+---
+
+## High-Frequency Errors
+
+*Most commonly encountered errors across the codebase*
+
+### ERR-SWIFT-001: Public SwiftData Model Requires Public Properties
+- **Discovery Method**: Compilation
+- **Frequency**: 1
+- **Error Message**: `error: property 'id' must be declared public because it matches a requirement in public protocol 'Identifiable'`
+- **Test Case**: N/A
+- **Context**: When a SwiftData @Model class is declared public for library/framework use, all stored properties must also be declared public to satisfy protocol requirements
+- **Root Cause**: Swift access control requires protocol conformance members to be at least as visible as the conforming type
+- **Proven Fix**: Make all stored properties public on public @Model classes
+- **Code Before**:
+```swift
+@Model
+public final class LLMConnection {
+    @Attribute(.unique) var id: UUID
+    var name: String
+    var apiUrl: String
+}
 ```
-error: property 'id' must be declared public because it matches a requirement in public protocol 'Identifiable'
-```
-
-**Solution**:
-When a SwiftData @Model class is declared public, all its properties must also be declared public to satisfy protocol requirements. Make all stored properties public:
+- **Code After**:
 ```swift
 @Model
 public final class LLMConnection {
     @Attribute(.unique) public var id: UUID
     public var name: String
     public var apiUrl: String
-    // ... all other properties must be public
 }
 ```
+- **Prevention Pattern**: When declaring a @Model class as public, always declare all stored properties as public
+- **Verification**: Compilation succeeds without access control errors
+- **Related Errors**: None
+- **Last Updated**: 2025-10-21
 
-**Context**: Occurs when making a SwiftData model public for library/framework use
-**Common Spec Reference**: SwiftCodeGeneration.md - access control patterns
-**Date Added**: 2025-10-21
+---
 
-### SwiftData Model Errors
+## Compilation Errors
 
-### Error: SwiftData availability requirements not met in Swift Package
-**Error Message**:
+### ERR-DATA-001: SwiftData Availability Requirements Not Met in Swift Package
+- **Discovery Method**: Compilation
+- **Frequency**: 1
+- **Error Message**: `error: 'Model()' is only available in macOS 14 or newer` / `error: 'Attribute(_:originalName:hashModifier:)' is only available in macOS 14 or newer`
+- **Test Case**: N/A
+- **Context**: Using SwiftData @Model decorator in Swift Package without specifying minimum platform versions in Package.swift
+- **Root Cause**: SwiftData requires explicit platform availability specification in Package.swift; without it, the package defaults to older deployment targets that predate SwiftData
+- **Proven Fix**: Add platform availability to Package.swift with minimum deployment targets that support SwiftData
+- **Code Before**:
+```swift
+let package = Package(
+    name: "LLMmanagement",
+    // No platforms specified
+    products: [...]
+)
 ```
-error: 'Model()' is only available in macOS 14 or newer
-error: 'Attribute(_:originalName:hashModifier:)' is only available in macOS 14 or newer
-```
-
-**Solution**:
-Add platform availability to Package.swift to specify minimum deployment targets for SwiftData support. Update Package.swift with platforms specification (using latest platform versions for modern Swift features):
+- **Code After**:
 ```swift
 let package = Package(
     name: "LLMmanagement",
@@ -54,116 +101,112 @@ let package = Package(
         .macOS(.v26),
         .visionOS(.v26)
     ],
-    // ... rest of package configuration
+    products: [...]
 )
 ```
+- **Prevention Pattern**: Always specify platform targets in Package.swift when using SwiftData or other framework-version-dependent APIs
+- **Verification**: `swift build` succeeds without availability errors
+- **Related Errors**: ERR-UI-002
+- **Last Updated**: 2025-10-21
 
-**Context**: Occurs when using SwiftData @Model decorator in Swift Package without specifying minimum platform versions
-**Common Spec Reference**: SwiftCodeGeneration.md - mentions iOS 26.0+ target but SwiftData requires explicit platform specification in Package.swift
-**Date Added**: 2025-10-21
+---
 
-### SwiftUI Implementation Errors
+## SwiftData Errors
 
-### Error: Environment modelContext access in Swift packages
-**Error Message**:
-```
-error: no exact matches in call to initializer
-@Environment(\.modelContext) private var modelContext
-error: cannot infer key path type from context; consider explicitly specifying a root type
-```
+*No additional SwiftData-specific errors beyond those in Compilation Errors.*
 
-**Solution**:
-For Swift packages targeting multiple platforms, inject ModelContext as a parameter instead of using @Environment:
+---
+
+## SwiftUI Errors
+
+### ERR-UI-001: Environment modelContext Access in Swift Packages
+- **Discovery Method**: Compilation
+- **Frequency**: 1
+- **Error Message**: `error: no exact matches in call to initializer` / `error: cannot infer key path type from context; consider explicitly specifying a root type`
+- **Test Case**: N/A
+- **Context**: Swift packages targeting multiple platforms using `@Environment(\.modelContext)` for SwiftData access
+- **Root Cause**: SwiftData environment keys need explicit typing in Swift packages; the key path inference fails in cross-platform package contexts
+- **Proven Fix**: Inject ModelContext as a parameter instead of using @Environment
+- **Code Before**:
 ```swift
-// Instead of @Environment(\.modelContext)
+@Environment(\.modelContext) private var modelContext
+```
+- **Code After**:
+```swift
 private let modelContext: ModelContext
 
 public init(modelContext: ModelContext) {
     self.modelContext = modelContext
-    // ... other initialization
 }
 ```
-This provides better cross-platform compatibility and clearer dependency injection.
+- **Prevention Pattern**: Use dependency injection for ModelContext in Swift packages rather than @Environment
+- **Verification**: Package compiles for all target platforms
+- **Related Errors**: ERR-DATA-001
+- **Last Updated**: 2025-10-21
 
-**Context**: Occurs in Swift packages when SwiftData environment keys need explicit typing
-**Common Spec Reference**: SwiftUISpec.md - cross-platform considerations
-**Date Added**: 2025-10-21
-
-### Error: Platform-specific SwiftUI APIs in cross-platform packages
-**Error Message**:
-```
-error: 'navigationBarLeading' is unavailable in macOS
-error: 'navigationBarTitleDisplayMode' has been explicitly marked unavailable here
-error: value of type 'TextField<Text>' has no member 'keyboardType'
-```
-
-**Solution**:
-Use platform-appropriate APIs or conditional compilation:
+### ERR-UI-002: Platform-Specific SwiftUI APIs in Cross-Platform Packages
+- **Discovery Method**: Compilation
+- **Frequency**: 1
+- **Error Message**: `error: 'navigationBarLeading' is unavailable in macOS` / `error: 'navigationBarTitleDisplayMode' has been explicitly marked unavailable here` / `error: value of type 'TextField<Text>' has no member 'keyboardType'`
+- **Test Case**: N/A
+- **Context**: Targeting multiple platforms (iOS, macOS, visionOS) with iOS-specific SwiftUI APIs
+- **Root Cause**: Some SwiftUI APIs are platform-specific and not available on all targets
+- **Proven Fix**: Use platform-appropriate APIs or conditional compilation with `#if os()`
+- **Code Before**:
 ```swift
-#if os(iOS)
+.toolbar {
+    ToolbarItem(placement: .navigationBarLeading) { ... }
+}
 .keyboardType(.URL)
 .autocapitalization(.none)
-#endif
-
-// Use cross-platform toolbar placements
+```
+- **Code After**:
+```swift
 .toolbar {
     ToolbarItem(placement: .cancellationAction) { ... }
     ToolbarItem(placement: .confirmationAction) { ... }
 }
+#if os(iOS)
+.keyboardType(.URL)
+.autocapitalization(.none)
+#endif
 ```
+- **Prevention Pattern**: Use cross-platform toolbar placements and wrap iOS-specific modifiers in `#if os(iOS)` blocks
+- **Verification**: `swift build` succeeds on all target platforms
+- **Related Errors**: ERR-UI-001
+- **Last Updated**: 2025-10-21
 
-**Context**: Occurs when targeting multiple platforms with iOS-specific SwiftUI APIs
-**Common Spec Reference**: SwiftUISpec.md - platform compatibility requirements
-**Date Added**: 2025-10-21
+---
 
-### SwiftUI + SwiftData Integration Errors
-*No entries yet*
+## Test Failure Errors
 
-### @Observable View Model Errors
-*No entries yet*
+*No entries yet.*
 
-### Swift Package Manager Errors
-*No entries yet*
+---
 
-### Testing Errors
-*No entries yet*
+## Runtime Errors
 
-### SwiftUI Testing Errors
-*No entries yet*
+*No entries yet.*
 
-### Accessibility Implementation Errors
-*No entries yet*
+---
 
-### Swift Concurrency with SwiftUI Errors
-*No entries yet*
+## Search Guidelines
 
-## Template for New Entries
+**When searching for error solutions in this file:**
 
-```
-### Error: [Brief description]
-**Error Message**:
-```
-[Exact error message]
-```
+1. **Search by error message**: Copy the exact compiler error text and search for it
+2. **Search by category**: Browse the relevant section (Compilation, SwiftData, SwiftUI, etc.)
+3. **Search by error ID**: Use the ERR-XXX-NNN format to find specific entries
+4. **Check related errors**: Follow Related Errors links for similar issues
 
-**Solution**:
-[Detailed solution with code examples if applicable]
+**When documenting new errors:**
 
-**Context**: [When this typically occurs]
-**Common Spec Reference**: [Which common spec contains related guidance]
-**Date Added**: [YYYY-MM-DD]
-```
-
-## Error Pattern Guidelines
-
-**When documenting errors, consider these contexts**:
-- **SwiftUI Errors**: Reference SwiftUISpec.md compliance issues
+- **Swift Compilation Errors**: Reference SwiftCodeGeneration.md compliance issues
 - **SwiftData Errors**: Model definition and persistence patterns
-- **Integration Errors**: SwiftUI + SwiftData integration challenges
+- **SwiftUI Errors**: Reference SwiftUISpec.md for cross-platform considerations
 - **Testing Errors**: Swift Testing framework issues, reference SwiftTestingSpec.md
 - **Concurrency Errors**: @MainActor and async/await patterns, reference SwiftCodeGeneration.md
 - **Package Manager Errors**: Swift Package specific compilation issues
-- **Accessibility Errors**: VoiceOver, Dynamic Type, and accessibility implementation issues
 
 **Cross-Reference with Common Specs**:
 - Always note which common specification contains related guidance
@@ -176,5 +219,5 @@ Use platform-appropriate APIs or conditional compilation:
 
 ---
 
-**Last Updated**: 2026-03-03
+**Last Updated**: 2026-03-16
 **Swift Version**: 6.2 (swift-tools-version: 6.2)

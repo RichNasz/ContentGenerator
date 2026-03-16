@@ -13,7 +13,6 @@ import SwiftUI
 
 /// Coordinates state for the project content generation window
 @Observable
-@MainActor
 class ProjectContentGenerationWindowState {
     // Window content configuration
     var projectName: String = ""

@@ -119,7 +119,7 @@ shasum -a 256 ContentGenerator_X.X.X.zip
 
 ## System Requirements
 
-- **macOS**: 14.0 (Sonoma) or later
+- **macOS**: 26.3 or later
 - **Architecture**: Apple Silicon (M1/M2/M3/M4) or Intel
 - **Memory**: 4GB RAM minimum, 8GB recommended
 - **Storage**: 500MB free space

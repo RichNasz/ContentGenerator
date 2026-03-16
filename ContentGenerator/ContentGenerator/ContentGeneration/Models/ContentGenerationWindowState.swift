@@ -14,7 +14,6 @@ import SwiftData
 
 /// Coordinates state for the content generation window
 @Observable
-@MainActor
 class ContentGenerationWindowState {
     // Window content configuration
     var sectionName: String = ""

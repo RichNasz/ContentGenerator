@@ -85,7 +85,7 @@ To report a security vulnerability:
 ## Development Environment
 
 ### Prerequisites
-- macOS 14.0 (Sonoma) or later
+- macOS 26.3 or later
 - Xcode 16.0 or later
 - Swift 6.2
 

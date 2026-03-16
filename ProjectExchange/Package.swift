@@ -6,9 +6,9 @@ import PackageDescription
 let package = Package(
     name: "ProjectExchange",
     platforms: [
-        .iOS(.v17),
-        .macOS(.v14),
-        .visionOS(.v1)
+        .iOS(.v26),
+        .macOS(.v26),
+        .visionOS(.v26)
     ],
     products: [
         .library(

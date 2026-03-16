@@ -340,9 +340,6 @@ nonisolated final class GlobalSettingsService: Sendable {
                 // Handle error appropriately
             }
         }
-        }
-
-        try context.save()
     }
 }
 ```

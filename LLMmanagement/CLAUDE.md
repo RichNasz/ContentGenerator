@@ -96,7 +96,7 @@ The `isConfigured` property validates:
 
 ### Multi-Specification Integration Workflow
 
-Use `/project:prep-for-coding <feature>` to execute this workflow automatically.
+Use `/prep-for-coding <feature>` to execute this workflow automatically.
 
 **Before ANY Code Generation**:
 1. **Read FunctionalSpecs.md** for language-agnostic requirements and UI specifications
@@ -120,7 +120,7 @@ Use `/project:prep-for-coding <feature>` to execute this workflow automatically.
 
 ### Specification Maintenance Requirements
 
-Use `/project:update-specs <description>` to execute spec updates with cross-reference verification.
+Use `/update-specs <description>` to execute spec updates with cross-reference verification.
 
 - **Update FunctionalSpecs.md** as new functionality is created (language-agnostic "WHAT")
 - **Update SwiftTechSpecs.md** with Swift implementation guidance (protocols, signatures, patterns)
@@ -131,7 +131,7 @@ Use `/project:update-specs <description>` to execute spec updates with cross-ref
 
 ### Code Generation Requirements
 
-Use `/project:validate-build LLMmanagement` to run phased build validation.
+Use `/validate-build LLMmanagement` to run phased build validation.
 
 1. **Dual compilation validation**:
    - Use command-line Swift tools (`swift build`, `swift test`) for immediate validation
@@ -143,7 +143,7 @@ Use `/project:validate-build LLMmanagement` to run phased build validation.
 
 ### Critical Feedback Loop
 
-Use `/project:log-error <description>` to document errors using the standardized template.
+Use `/log-error <description>` to document errors using the standardized template.
 
 - Before fixing any compilation error, check `Specs/CodeLessonsLearned.md` for existing solutions
 - After solving any new error, document the error and solution in `Specs/CodeLessonsLearned.md`

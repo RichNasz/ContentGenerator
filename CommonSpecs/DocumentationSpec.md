@@ -38,7 +38,7 @@ The root README.md file must include the following sections in order:
 
 3. **Installation Section**
    - Installation instructions (App Store, TestFlight, or development setup)
-   - Minimum iOS version requirements (26.0+)
+   - Minimum iOS version requirements (26.3+)
    - Device compatibility information (iPhone, iPad)
 
 4. **Features Section**
@@ -557,7 +557,7 @@ All public symbols must include appropriate metadata following Apple's guideline
 /// }
 /// ```
 ///
-/// - Note: This view model requires iOS 26.0 or later.
+/// - Note: This view model requires iOS 26.3 or later.
 /// - Important: Always check authentication state before accessing protected resources.
 ///
 /// - Parameters:

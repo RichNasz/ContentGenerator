@@ -669,11 +669,11 @@ For comprehensive SwiftUI testing patterns, see SwiftUISpec.md. This section cov
 @Suite("UI Integration")
 struct UIIntegrationTests {
 
-    @Test("View model state updates trigger UI changes")
+    @Test("Service state updates trigger UI changes")
     @MainActor
-    func viewModelStateUpdatesUI() async throws {
+    func serviceStateUpdatesUI() async throws {
         let mockService = MockDataService()
-        let viewModel = ContentListViewModel(dataService: mockService)
+        let service = ContentListService(dataService: mockService)
 
         // Setup mock to return data
         mockService.fetchResult = .success([
@@ -681,31 +681,31 @@ struct UIIntegrationTests {
         ])
 
         // Trigger load
-        await viewModel.loadData()
+        await service.loadData()
 
         // Verify state updates
-        #expect(viewModel.items.count == 1)
-        #expect(viewModel.items.first?.name == "Test Item")
-        #expect(viewModel.isLoading == false)
-        #expect(viewModel.error == nil)
+        #expect(service.items.count == 1)
+        #expect(service.items.first?.name == "Test Item")
+        #expect(service.isLoading == false)
+        #expect(service.error == nil)
     }
 
     @Test("Error states are properly exposed to UI")
     @MainActor
     func errorStatesExposedToUI() async throws {
         let mockService = MockDataService()
-        let viewModel = ContentListViewModel(dataService: mockService)
+        let service = ContentListService(dataService: mockService)
 
         // Setup mock to fail
         mockService.fetchResult = .failure(DataError.itemNotFound)
 
         // Trigger load
-        await viewModel.loadData()
+        await service.loadData()
 
         // Verify error state
-        #expect(viewModel.items.isEmpty)
-        #expect(viewModel.isLoading == false)
-        #expect(viewModel.error != nil)
+        #expect(service.items.isEmpty)
+        #expect(service.isLoading == false)
+        #expect(service.error != nil)
     }
 }
 ```

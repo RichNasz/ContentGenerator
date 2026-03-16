@@ -15,7 +15,6 @@ import LLMmanagement
 
 // MARK: - Global Settings Service
 
-@MainActor
 @Observable
 final class GlobalSettingsService {
     private let dataManager: ProjectDataManager
@@ -55,7 +54,6 @@ final class GlobalSettingsService {
 
 // MARK: - Project Data Manager
 
-@MainActor
 @Observable
 final class ProjectDataManager {
     private let container: ModelContainer

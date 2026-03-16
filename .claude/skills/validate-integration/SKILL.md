@@ -1,6 +1,7 @@
 ---
 name: validate-integration
 description: Builds all three targets in dependency order (LLMmanagement, ProjectExchange, ContentGenerator) to verify cross-project compatibility.
+argument-hint: "(no arguments)"
 disable-model-invocation: true
 ---
 

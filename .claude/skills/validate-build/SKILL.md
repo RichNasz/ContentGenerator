@@ -19,7 +19,7 @@ Based on the target project argument:
 | **LLMmanagement** | `swift build` (run from `LLMmanagement/` directory) |
 | **ProjectExchange** | `swift build` (run from `ProjectExchange/` directory) |
 
-## Phase 1: Syntax Check (Dry Run)
+## Step 2: Syntax Check (Dry Run)
 
 For ContentGenerator:
 ```bash
@@ -33,7 +33,7 @@ swift build 2>&1 | head -50
 
 If the syntax check produces errors, report them and continue to Phase 2 for full detail.
 
-## Phase 2: Full Compilation
+## Step 3: Full Compilation
 
 Run a clean build to get complete error output:
 
@@ -49,7 +49,7 @@ swift package clean && swift build 2>&1
 
 If the build succeeds (`BUILD SUCCEEDED` or exit code 0), skip to Phase 5 (report).
 
-## Phase 3: Error Classification
+## Step 4: Error Classification
 
 On build failure, classify each error against the target project's `CodeLessonsLearned.md`:
 
@@ -63,7 +63,7 @@ On build failure, classify each error against the target project's `CodeLessonsL
    - **KNOWN** -- has a matching entry with a documented Proven Fix
    - **NEW** -- no matching entry found
 
-## Phase 4: Fix and Rebuild
+## Step 5: Fix and Rebuild
 
 For each **KNOWN** error:
 1. Apply the Proven Fix documented in CodeLessonsLearned.md
@@ -77,7 +77,7 @@ After applying all fixes, rebuild (repeat Phase 2). Continue this cycle until ei
 - The build succeeds, or
 - No further progress is made (same errors persist after fixes)
 
-## Phase 5: Validation Report
+## Step 6: Validation Report
 
 Produce a structured validation report:
 
@@ -114,11 +114,11 @@ Produce a structured validation report:
 [List any compilation warnings]
 ```
 
-## Step 6: Document New Errors
+## Step 7: Document New Errors
 
 If any **NEW** errors were encountered and resolved, remind the user to run `/log-error` for each one to add them to the CodeLessonsLearned database.
 
-## Step 7: Suggest Next Steps
+## Step 8: Suggest Next Steps
 
 After a successful build:
 - If the target has tests, suggest running `/run-tests <target>` to verify test suite passes
