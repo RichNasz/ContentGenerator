@@ -19,6 +19,10 @@ The following files are generated from ProjectSpecs and must conform to the rule
 | `ContentGenerator/README.md` | This spec + ContentGenerator FunctionalSpecs | App sub-project README |
 | `LLMmanagement/README.md` | This spec + LLMmanagement FunctionalSpecs | Package sub-project README |
 | `ProjectExchange/README.md` | This spec + ProjectExchange FunctionalSpecs | Package sub-project README |
+| `CommonSpecs/README.md` | This spec | Shared specs folder README |
+| `ContentGenerator/Specs/README.md` | This spec | App specs folder README |
+| `LLMmanagement/Specs/README.md` | This spec | Package specs folder README |
+| `ProjectExchange/Specs/README.md` | This spec | Package specs folder README |
 
 ## General Tone
 
@@ -105,6 +109,28 @@ Each subproject directory (`ContentGenerator/`, `LLMmanagement/`, `ProjectExchan
 - No duplicate of root README content (architecture, contributing, license)
 - Keep concise — sub-READMEs orient the reader, not replicate AppDocumentation.md
 - Same tone rules as root README (professional, precise, no emojis)
+
+---
+
+## Specs Folder README Files
+
+Each `Specs/` folder and the root `CommonSpecs/` folder has a README.md that renders on GitHub when browsing the directory. These READMEs must conform to the following rules.
+
+### Structure
+
+1. **H1 Title** — Folder name with role in parentheses (e.g., "CommonSpecs (Shared Development Reference)")
+2. **Description** — One paragraph explaining what the folder contains and how it is used in the spec-driven workflow
+3. **Files Table** — Markdown table listing every `.md` file in the folder with a one-line description
+4. **Spec-Driven Workflow** — Brief explanation of which Claude Code skills maintain these files
+5. **Back Link** — Link back to the parent README and root README
+
+### Rules
+
+- No badge row (badges are root-level only)
+- Same tone rules as root README (professional, precise, no emojis)
+- Keep concise — these orient the reader, not replicate spec content
+- CommonSpecs README links back to root README only (no parent README)
+- Target Specs READMEs link to both the target README and root README
 
 ---
 
