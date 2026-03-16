@@ -36,6 +36,7 @@ The following files are generated from ProjectSpecs and must conform to the rule
 | `Skills/validate-integration/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
 | `Skills/validate-specs/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
 | `Skills/validate-commit/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
+| `Skills/build-distribution/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
 
 ## General Tone
 

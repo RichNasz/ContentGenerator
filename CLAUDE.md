@@ -60,3 +60,9 @@ cross-references, terminology, and completeness.
 ### On-Demand: Commit Validation
 `/validate-commit [ref]` validates commit message format against
 ContributingSpec conventions.
+
+### On-Demand: Distribution Build
+`/build-distribution` builds an unsigned distribution package (ZIP + DMG + SHA-256 checksums)
+for team distribution. Performs pre-flight checks (git cleanliness, version confirmation,
+CHANGELOG coverage), invokes the distribution script, and produces a structured artifact summary.
+Invoke when a release is ready to share with the team.

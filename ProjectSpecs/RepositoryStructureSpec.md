@@ -58,7 +58,9 @@ ContentGenerator/                    # Repository root
 │   │   └── SkillSpec.md
 │   ├── validate-specs/
 │   │   └── SkillSpec.md
-│   └── validate-commit/
+│   ├── validate-commit/
+│   │   └── SkillSpec.md
+│   └── build-distribution/
 │       └── SkillSpec.md
 │
 ├── ContentGenerator/                # macOS application (Xcode project)

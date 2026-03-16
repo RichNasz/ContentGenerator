@@ -20,6 +20,7 @@ The skill system follows the [Agent Skills specification](https://agentskills.io
 | [validate-integration](validate-integration/) | On-demand | Builds all three targets to verify cross-project compatibility |
 | [validate-specs](validate-specs/) | On-demand | Checks spec consistency, cross-references, and completeness |
 | [validate-commit](validate-commit/) | On-demand | Validates commit message format against ContributingSpec |
+| [build-distribution](build-distribution/) | On-demand (release) | Builds unsigned ZIP + DMG artifacts with pre-flight checks and artifact summary |
 
 ## Workflow
 
@@ -35,7 +36,7 @@ prep-for-coding --> [write code] --> validate-build --> [fix errors] --> log-err
                                                                   log-change (opt)
 ```
 
-Optional skills (`run-tests`) can follow the main workflow. On-demand skills (`evaluate-specs`, `generate-docc`, `generate-repo-docs`, `validate-integration`, `validate-specs`, `validate-commit`) can be invoked at any time independently.
+Optional skills (`run-tests`) can follow the main workflow. On-demand skills (`evaluate-specs`, `generate-docc`, `generate-repo-docs`, `validate-integration`, `validate-specs`, `validate-commit`, `build-distribution`) can be invoked at any time independently.
 
 ## Relationship to .claude/skills/
 
