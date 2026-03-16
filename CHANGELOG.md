@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- [Project] Rename GitHub repository from ContentCreator to ContentGenerator to align with project name
+
 ### Deprecated
 
 ### Removed
