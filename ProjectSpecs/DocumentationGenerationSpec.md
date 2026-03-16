@@ -23,6 +23,14 @@ The following files are generated from ProjectSpecs and must conform to the rule
 | `ContentGenerator/Specs/README.md` | This spec | App specs folder README |
 | `LLMmanagement/Specs/README.md` | This spec | Package specs folder README |
 | `ProjectExchange/Specs/README.md` | This spec | Package specs folder README |
+| `Skills/README.md` | SkillDevelopmentSpec + this spec | Skills system overview |
+| `Skills/prep-for-coding/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
+| `Skills/validate-build/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
+| `Skills/log-error/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
+| `Skills/update-specs/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
+| `Skills/log-change/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
+| `Skills/evaluate-specs/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
+| `Skills/generate-docc/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
 
 ## General Tone
 
@@ -131,6 +139,41 @@ Each `Specs/` folder and the root `CommonSpecs/` folder has a README.md that ren
 - Keep concise — these orient the reader, not replicate spec content
 - CommonSpecs README links back to root README only (no parent README)
 - Target Specs READMEs link to both the target README and root README
+
+---
+
+## Skills Documentation Files
+
+The `Skills/` folder and each skill subdirectory has documentation files that render on GitHub. These must conform to the following rules.
+
+### Skills/README.md Structure
+
+1. **H1 Title** -- folder name with role in parentheses
+2. **Description paragraph** -- explains the skills system and dual-folder relationship
+3. **Skills table** -- all skills with columns: Skill (linked), Category, Description
+4. **Workflow diagram** -- text-based diagram showing skill invocation order
+5. **Relationship to .claude/skills/** -- explains executable vs documentation split
+6. **Skill Development link** -- link to `ProjectSpecs/SkillDevelopmentSpec.md`
+7. **Back link** -- link to root README
+
+### Skills/\<name\>/SkillSpec.md Structure
+
+1. **H1 Title** -- skill name in human-readable form
+2. **Description** -- one paragraph explaining purpose
+3. **Workflow Position** -- category and when to invoke
+4. **Invocation** -- slash command syntax with argument description
+5. **Inputs** -- files and data the skill reads
+6. **Outputs** -- what the skill produces
+7. **Allowed Tools** -- tools the skill is permitted to use
+8. **Related Skills** -- skills typically invoked before or after
+9. **Back Links** -- links to Skills/README.md and root README
+
+### Rules
+
+- No badge row (badges are root-level only)
+- Same tone rules as root README (professional, precise, no emojis)
+- Keep concise -- describe what the skill does, do not replicate SKILL.md step-by-step instructions
+- SkillSpec.md files orient the reader and point to .claude/skills/ for execution details
 
 ---
 

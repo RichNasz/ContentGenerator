@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- [Project] Add README.md files to CommonSpecs/ and each target's Specs/ folder for GitHub discoverability
 - [ContentGenerator] Add log-change skill for proposing and writing changelog entries to CHANGELOG.md using Keep a Changelog format
 
 ### Changed

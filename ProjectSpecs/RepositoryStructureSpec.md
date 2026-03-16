@@ -21,6 +21,7 @@ ContentGenerator/                    # Repository root
 │   ├── ProjectOverviewSpec.md       # Project identity, features, architecture
 │   ├── DocumentationGenerationSpec.md # Rules for generating README, CONTRIBUTING, etc.
 │   ├── ContributingSpec.md          # Contribution workflow, commit conventions
+│   ├── SkillDevelopmentSpec.md      # Skill creation template and governance rules
 │   └── RepositoryStructureSpec.md   # This file — repo layout documentation
 │
 ├── CommonSpecs/                     # Shared Swift development reference specs
@@ -32,6 +33,23 @@ ContentGenerator/                    # Repository root
 │   ├── SwiftTestingSpec.md          # Swift Testing framework patterns
 │   ├── SwiftUISpec.md               # SwiftUI component patterns
 │   └── SwiftUIWithoutMVVM.md        # Direct state management (no MVVM)
+│
+├── Skills/                          # Claude Code skill documentation and assets
+│   ├── README.md                    # Skills system overview and table of all skills
+│   ├── prep-for-coding/
+│   │   └── SkillSpec.md             # Skill specification
+│   ├── validate-build/
+│   │   └── SkillSpec.md
+│   ├── log-error/
+│   │   └── SkillSpec.md
+│   ├── update-specs/
+│   │   └── SkillSpec.md
+│   ├── log-change/
+│   │   └── SkillSpec.md
+│   ├── evaluate-specs/
+│   │   └── SkillSpec.md
+│   └── generate-docc/
+│       └── SkillSpec.md
 │
 ├── ContentGenerator/                # macOS application (Xcode project)
 │   ├── ContentGenerator.xcodeproj/  # Xcode project file
@@ -100,6 +118,9 @@ Each target maintains three core spec files:
 - **CodeLessonsLearned.md** — Resolved error patterns with 12-field templates
 
 These are updated by the `/update-specs` skill after functionality changes and read by `/prep-for-coding` before code generation.
+
+### Skills/ (Skill Documentation)
+Human-readable specifications for the Claude Code skills defined in `.claude/skills/`. Each skill has a `SkillSpec.md` describing its purpose, workflow position, inputs, and outputs. The SKILL.md executable definitions remain in `.claude/skills/` where Claude Code expects them. Governance rules for creating and maintaining skills are in `ProjectSpecs/SkillDevelopmentSpec.md`.
 
 ## Build Instructions
 
