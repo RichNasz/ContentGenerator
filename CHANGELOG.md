@@ -18,6 +18,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
+## [2.0] - 2026-03-16
+
+### Added
+
+- [ContentGenerator] Introduce .cgspecs bundle-based storage, replacing the centralized
+  SwiftData store with per-bundle isolated data stores and persistent bundle selection
+  across sessions
+- [LLMmanagement] Add LLM connection management library with OpenAI Chat Completions and
+  Responses endpoint support, custom URL paths, per-connection model and timeout
+  configuration, and persistent connection storage
+- [ProjectExchange] Add portable project import/export library with JSON serialization,
+  schema versioning, and file attachment metadata support
+- [ContentGenerator] Add file attachment support with reference file selection and
+  security-scoped bookmark management
+- [ContentGenerator] Add project-level and section-level LLM connection references,
+  enabling independent generation configuration per project and per section
+- [ContentGenerator] Add project export/import workflow via ProjectExchange integration,
+  including LLM connection conflict resolution on import
+
 ## [1.0] - 2026-03-16
 
 ### Added
