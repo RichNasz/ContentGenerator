@@ -31,6 +31,11 @@ The following files are generated from ProjectSpecs and must conform to the rule
 | `Skills/log-change/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
 | `Skills/evaluate-specs/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
 | `Skills/generate-docc/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
+| `Skills/generate-repo-docs/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
+| `Skills/run-tests/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
+| `Skills/validate-integration/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
+| `Skills/validate-specs/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
+| `Skills/validate-commit/SkillSpec.md` | SkillDevelopmentSpec + this spec | Skill documentation |
 
 ## General Tone
 
@@ -227,6 +232,7 @@ Sections:
 Checklist enforcing the spec-driven workflow:
 - [ ] I have run `/prep-for-coding` before making changes
 - [ ] I have run `/validate-build` after making changes
+- [ ] I have run `/run-tests` after successful build (if target has tests)
 - [ ] I have run `/log-error` for any resolved errors
 - [ ] I have run `/update-specs` after completing functionality changes
 - [ ] My changes follow the project's concurrency conventions (no GCD, no DispatchQueue)

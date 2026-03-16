@@ -15,7 +15,8 @@ All code changes must follow the spec-driven skill workflow. This is not optiona
 3. **After code changes:** Run `/validate-build <target>` (target: ContentGenerator, LLMmanagement, or ProjectExchange) to verify the build.
 4. **After resolving any error:** Run `/log-error <description>` to document the error in CodeLessonsLearned.md.
 5. **After completing functionality changes:** Run `/update-specs <description>` to update FunctionalSpecs, SwiftTechSpecs, and CodeLessonsLearned.
-6. **Optional:** Run `/log-change <description>` to record the change in CHANGELOG.md.
+6. **Optional:** Run `/run-tests <target>` to run tests after a successful build.
+7. **Optional:** Run `/log-change <description>` to record the change in CHANGELOG.md.
 
 ### Why This Matters
 

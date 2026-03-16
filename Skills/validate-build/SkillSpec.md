@@ -39,7 +39,7 @@ All tools (uses `disable-model-invocation: true`)
 ## Related Skills
 
 - **Previous:** Code changes informed by [prep-for-coding](../prep-for-coding/)
-- **Next:** [log-error](../log-error/) for any new errors resolved, then [update-specs](../update-specs/)
+- **Next:** [run-tests](../run-tests/) (optional, if target has tests), [log-error](../log-error/) for any new errors resolved, then [update-specs](../update-specs/)
 
 ---
 

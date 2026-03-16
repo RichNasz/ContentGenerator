@@ -70,8 +70,8 @@ Skills are classified by their position in the development workflow:
 | Category | Skills | When to Invoke |
 |----------|--------|----------------|
 | **Required workflow** | `prep-for-coding`, `validate-build`, `log-error`, `update-specs` | Must be invoked at the indicated workflow point per CLAUDE.md |
-| **Optional workflow** | `log-change` | Available after completing functionality changes |
-| **On-demand** | `evaluate-specs`, `generate-docc` | Invoke when explicitly requested |
+| **Optional workflow** | `log-change`, `run-tests` | Available after completing functionality changes or successful build validation |
+| **On-demand** | `evaluate-specs`, `generate-docc`, `generate-repo-docs`, `validate-integration`, `validate-specs`, `validate-commit` | Invoke when explicitly requested |
 
 ---
 

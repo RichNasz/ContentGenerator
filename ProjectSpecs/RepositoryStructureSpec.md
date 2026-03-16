@@ -48,7 +48,17 @@ ContentGenerator/                    # Repository root
 │   │   └── SkillSpec.md
 │   ├── evaluate-specs/
 │   │   └── SkillSpec.md
-│   └── generate-docc/
+│   ├── generate-docc/
+│   │   └── SkillSpec.md
+│   ├── generate-repo-docs/
+│   │   └── SkillSpec.md
+│   ├── run-tests/
+│   │   └── SkillSpec.md
+│   ├── validate-integration/
+│   │   └── SkillSpec.md
+│   ├── validate-specs/
+│   │   └── SkillSpec.md
+│   └── validate-commit/
 │       └── SkillSpec.md
 │
 ├── ContentGenerator/                # macOS application (Xcode project)
@@ -82,7 +92,8 @@ ContentGenerator/                    # Repository root
 │   ├── Tests/                       # Package tests
 │   └── Specs/                       # Target-specific specs
 │       ├── FunctionalSpecs.md
-│       └── SwiftTechSpecs.md
+│       ├── SwiftTechSpecs.md
+│       └── CodeLessonsLearned.md
 │
 ├── ContentGenerator.xcworkspace/    # Xcode workspace (aggregates all components)
 ├── ContentGenerator.icon/           # App icon assets

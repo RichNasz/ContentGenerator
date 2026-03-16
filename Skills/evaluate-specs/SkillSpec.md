@@ -27,6 +27,7 @@ The argument is a specific project name (ContentGenerator, LLMmanagement, Projec
 A structured evaluation report containing:
 - Scores table with 5 criteria (Human-AI Interaction, Error-Free Code Generation, Documentation Quality, Code Quality, Holistic Suite Integration), each weighted 20%
 - Overall weighted score mapped to a rating category (Exceptional/Good/Adequate/Poor/Unacceptable)
+- Per-file scores (0-10) attributing quality to individual spec files
 - 3-5 specific strengths referencing spec files and sections
 - 3-5 areas for improvement with criteria references
 - 3-5 actionable, prioritized recommendations identifying files and changes

@@ -104,6 +104,8 @@ Output a structured report:
 
 Then stop. Do not proceed to Step 5.
 
+> **Note on spec changes:** If specs have changed since the DocC catalog was last generated, re-running this skill in generate mode (after removing the existing catalog) will produce articles reflecting the current specs. For incremental updates, use validate mode (Step 5) to identify gaps, then manually update the affected articles.
+
 ## Step 5: Validate Mode (Catalog Exists)
 
 ### 5a: Check Required Articles Are Present
@@ -130,14 +132,22 @@ Scan source files for public symbols (same as Step 4b). Compare against what is 
 
 Extract all `<doc:...>` references from all articles. Verify each reference resolves to an existing article filename (without extension) in the same `Documentation.docc/` directory.
 
-### 5e: Check DocumentationSpec.md Compliance
+### 5e: Check Spec Sync Status
+
+Compare the content of existing DocC articles against current spec files to detect drift:
+- Read `<Project>/Specs/FunctionalSpecs.md` and `<Project>/Specs/SwiftTechSpecs.md`
+- Check if features described in FunctionalSpecs are reflected in User-Guide.md
+- Check if public API changes in source files are reflected in API-Reference.md
+- Flag any articles that appear out of sync with current specs
+
+### 5f: Check DocumentationSpec.md Compliance
 
 Verify compliance with best practices from DocumentationSpec.md:
 - Progressive disclosure (simple to complex)
 - Comprehensive coverage of public APIs
 - Proper metadata sections (Overview, Usage, Parameters, Returns, Throws) in source documentation
 
-### 5f: Produce Validation Report
+### 5g: Produce Validation Report
 
 Output a structured report:
 
@@ -171,6 +181,14 @@ Output a structured report:
 - Valid references: [count]
 - Invalid references: [list if any]
 
+### Spec Sync Status
+| Article | In Sync | Details |
+|---------|---------|---------|
+| Documentation.md | YES / NO | [details if out of sync] |
+| Getting-Started.md | YES / NO | [details] |
+| User-Guide.md | YES / NO | [details] |
+| API-Reference.md | YES / NO | [details] |
+
 ### Recommendations
-[Actionable items to improve documentation quality]
+[Actionable items to improve documentation quality, including spec sync fixes if needed]
 ```

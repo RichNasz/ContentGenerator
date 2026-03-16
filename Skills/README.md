@@ -13,8 +13,13 @@ The skill system follows the [Agent Skills specification](https://agentskills.io
 | [log-error](log-error/) | Required (after errors) | Documents resolved errors in CodeLessonsLearned |
 | [update-specs](update-specs/) | Required (after changes) | Updates specification files to reflect changes |
 | [log-change](log-change/) | Optional (after changes) | Proposes changelog entries for completed changes |
+| [run-tests](run-tests/) | Optional (after validate-build) | Runs tests and classifies failures against CodeLessonsLearned |
 | [evaluate-specs](evaluate-specs/) | On-demand | Runs spec quality evaluation with scored criteria |
 | [generate-docc](generate-docc/) | On-demand | Generates or validates DocC documentation catalogs |
+| [generate-repo-docs](generate-repo-docs/) | On-demand | Generates repository documentation from ProjectSpecs |
+| [validate-integration](validate-integration/) | On-demand | Builds all three targets to verify cross-project compatibility |
+| [validate-specs](validate-specs/) | On-demand | Checks spec consistency, cross-references, and completeness |
+| [validate-commit](validate-commit/) | On-demand | Validates commit message format against ContributingSpec |
 
 ## Workflow
 
@@ -22,12 +27,15 @@ The required skills form a development loop:
 
 ```
 prep-for-coding --> [write code] --> validate-build --> [fix errors] --> log-error
-                                                                           |
-                                                                           v
-                                                     log-change <-- update-specs
+                                          |                                |
+                                          v                                v
+                                     run-tests (opt)              update-specs
+                                                                       |
+                                                                       v
+                                                                  log-change (opt)
 ```
 
-On-demand skills (`evaluate-specs`, `generate-docc`) can be invoked at any time independently.
+Optional skills (`run-tests`) can follow the main workflow. On-demand skills (`evaluate-specs`, `generate-docc`, `generate-repo-docs`, `validate-integration`, `validate-specs`, `validate-commit`) can be invoked at any time independently.
 
 ## Relationship to .claude/skills/
 

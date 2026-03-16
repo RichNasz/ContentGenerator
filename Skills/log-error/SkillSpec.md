@@ -29,6 +29,8 @@ A new or updated entry in CodeLessonsLearned.md with all 12 required fields:
 
 If a matching entry already exists, updates its Frequency count and Last Updated date instead of creating a duplicate.
 
+Additionally suggests related CommonSpec prevention patterns -- references existing patterns or recommends adding new ones to the relevant CommonSpec.
+
 ## Allowed Tools
 
 All tools (uses `disable-model-invocation: true`)

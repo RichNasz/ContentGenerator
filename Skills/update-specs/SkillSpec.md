@@ -27,7 +27,7 @@ The argument describes the functionality change that was implemented.
 - Updated FunctionalSpecs.md with new or modified feature descriptions
 - Updated SwiftTechSpecs.md with new implementation patterns and guidance
 - Updated CodeLessonsLearned.md if new errors were encountered
-- Cross-reference consistency verification
+- Cross-reference consistency verification (including dead reference detection and terminology drift fixes)
 - Summary of all changes made
 
 **Edit scope:** Only files matching `<Project>/Specs/*.md`. All other files are read-only.

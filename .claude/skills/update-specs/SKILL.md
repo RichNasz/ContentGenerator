@@ -96,6 +96,23 @@ After applying all updates, re-read the modified spec files and check for:
 
 If inconsistencies are found, apply corrective edits.
 
+## Step 7b: Dead Reference Detection
+
+Use Glob to verify that file paths referenced in the updated specs actually exist:
+- Check all `<Project>/Specs/*.md` cross-references (e.g., references to CommonSpecs files, other spec files)
+- Check references to source files or types mentioned in SwiftTechSpecs
+
+Report any dead references found and fix them in the spec files.
+
+## Step 7c: Terminology Drift Check
+
+Scan the updated specs for common terminology drift patterns:
+- Same type referred to by different names (e.g., "ModelContext" vs "model context" vs "context")
+- Same pattern referred to inconsistently (e.g., "@Observable" vs "Observable macro" vs "Observation")
+- Same feature described with different terminology across FunctionalSpecs and SwiftTechSpecs
+
+If terminology drift is found, normalize to the canonical term used in CommonSpecs and apply corrective edits.
+
 ## Step 8: Update Last Updated Dates
 
 Update the "Last Updated" date at the bottom of every modified specification file to today's date.

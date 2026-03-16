@@ -48,7 +48,19 @@ Search the target project's `CodeLessonsLearned.md` for error patterns related t
 - Note any High-Frequency Errors that could apply
 - Record prevention patterns from matching entries
 
-## Step 5: Produce Synthesis
+## Step 5: Check Spec Currency and Consistency
+
+Before producing the synthesis, scan the specs you have read for potential issues:
+
+1. **Outdated references**: Check if any file paths, type names, or API patterns referenced in specs no longer match actual source files. Use Glob or Grep to spot-check 2-3 key references from SwiftTechSpecs.md against the codebase.
+2. **Contradictions**: Check if FunctionalSpecs and SwiftTechSpecs describe the same feature differently (e.g., different terminology, conflicting behavior descriptions).
+3. **Stale CodeLessonsLearned entries**: Check if any error patterns reference code patterns or types that no longer exist.
+
+If issues are found, include a **Spec Currency Warnings** section in the synthesis (before the checklist) listing each issue with the file and section where it was found. Recommend running `/validate-specs` for a comprehensive audit.
+
+If no issues are found, omit the warnings section.
+
+## Step 6: Produce Synthesis
 
 Output a structured synthesis with these sections:
 
@@ -64,6 +76,9 @@ List relevant entries from CodeLessonsLearned.md with their Error IDs and preven
 ### Architecture Constraints
 Document constraints from the specs: Swift 6 concurrency requirements, default MainActor isolation rules, SwiftData patterns, and any cross-project dependencies.
 
+### Spec Currency Warnings (if any)
+List any outdated references, contradictions, or stale entries found in Step 5. For each, identify the file, section, and nature of the issue. Recommend `/validate-specs` if issues are found.
+
 ### Pre-Generation Checklist
 Present this checklist for confirmation before proceeding:
 
@@ -74,3 +89,4 @@ Present this checklist for confirmation before proceeding:
 - [ ] Code quality standards noted from SwiftCodeGeneration.md
 - [ ] Known errors checked in CodeLessonsLearned.md
 - [ ] Architecture compliance verified across all specs
+- [ ] Spec currency verified (no outdated references or contradictions)

@@ -94,5 +94,16 @@ List 3-5 specific strengths observed in the specification suite, referencing spe
 ### Areas for Improvement
 List 3-5 specific areas where the specs fall short, referencing the criteria and what's missing.
 
+### Per-File Scores
+For each spec file evaluated, attribute a file-level score (0-10) indicating how well that individual file contributes to the overall suite quality. Present as a table:
+
+| File | Score | Notes |
+|------|-------|-------|
+| `<Project>/Specs/FunctionalSpecs.md` | X/10 | [brief note on strengths/weaknesses] |
+| `<Project>/Specs/SwiftTechSpecs.md` | X/10 | [brief note] |
+| ... | ... | ... |
+
+This helps identify which specific files need the most attention.
+
 ### Actionable Recommendations
 Provide 3-5 specific, prioritized recommendations for improving the lowest-scoring criteria. Each recommendation should identify the file to modify and the change to make.

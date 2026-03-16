@@ -116,4 +116,10 @@ Produce a structured validation report:
 
 ## Step 6: Document New Errors
 
-If any **NEW** errors were encountered and resolved, remind the user to run `/project:log-error` for each one to add them to the CodeLessonsLearned database.
+If any **NEW** errors were encountered and resolved, remind the user to run `/log-error` for each one to add them to the CodeLessonsLearned database.
+
+## Step 7: Suggest Next Steps
+
+After a successful build:
+- If the target has tests, suggest running `/run-tests <target>` to verify test suite passes
+- If functionality changed, remind about `/update-specs` after all validation is complete

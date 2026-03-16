@@ -78,3 +78,22 @@ Insert the new entry under the appropriate section heading in CodeLessonsLearned
 ## Step 7: Update High-Frequency Errors
 
 If this error (or its duplicate) has a **Frequency** of 3 or more occurrences, add or update its entry in the **High-Frequency Errors** section at the top of the file.
+
+## Step 8: Suggest Related CommonSpec Prevention Patterns
+
+After logging the error, search CommonSpecs for patterns that could help prevent this class of error in future code generation:
+
+| Error Category | CommonSpecs to Check |
+|---------------|---------------------|
+| SWIFT | `CommonSpecs/SwiftCodeGeneration.md` |
+| DATA | `CommonSpecs/SwiftDataPatterns.md` |
+| UI | `CommonSpecs/SwiftUISpec.md`, `CommonSpecs/SwiftUIWithoutMVVM.md` |
+| RUNTIME | `CommonSpecs/SwiftCodeGeneration.md` (concurrency, memory sections) |
+| TEST | `CommonSpecs/SwiftTestingSpec.md` |
+| CONCURRENCY | `CommonSpecs/SwiftCodeGeneration.md` (concurrency section) |
+
+Read the relevant CommonSpec(s) and check if they already document a prevention pattern for this error type. Report one of:
+
+- **Pattern exists**: Reference the CommonSpec file, section, and specific guidance that would prevent this error. Note this in the entry's Prevention Pattern field.
+- **Pattern missing**: Suggest that a prevention pattern should be added to the relevant CommonSpec. Recommend running `/update-specs` to add it.
+- **Not applicable**: The error is too specific to warrant a CommonSpec pattern.

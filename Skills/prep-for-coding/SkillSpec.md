@@ -31,6 +31,7 @@ A structured synthesis containing:
 - Implementation patterns from SwiftTechSpecs and CommonSpecs
 - Errors to avoid from CodeLessonsLearned (with Error IDs and prevention patterns)
 - Architecture constraints
+- Spec currency warnings (if outdated references, contradictions, or stale entries are found)
 - Pre-generation checklist for confirmation
 
 ## Allowed Tools

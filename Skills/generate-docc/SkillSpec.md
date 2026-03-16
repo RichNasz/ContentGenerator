@@ -35,6 +35,7 @@ The argument specifies which target's DocC catalog to generate or validate.
 - Verifies content standards (overviews, code examples, cross-references, DocC formatting)
 - Measures public API documentation coverage
 - Validates cross-reference links
+- Checks spec sync status (whether articles reflect current FunctionalSpecs and SwiftTechSpecs)
 - Produces a validation report with pass/fail results and recommendations
 
 ## Allowed Tools
