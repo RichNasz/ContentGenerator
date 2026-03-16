@@ -10,9 +10,10 @@ Link any related specification files or GitHub issues.
 
 - [ ] I have run `/prep-for-coding` before making changes
 - [ ] I have run `/validate-build` after making changes
+- [ ] I have run `/run-tests` after successful build (if target has tests)
 - [ ] I have run `/log-error` for any resolved errors
 - [ ] I have run `/update-specs` after completing functionality changes
-- [ ] My changes follow the project concurrency conventions (no GCD, no DispatchQueue)
+- [ ] My changes follow the project's concurrency conventions (no GCD, no DispatchQueue)
 - [ ] I have tested my changes in Xcode
 
 ## Test Plan

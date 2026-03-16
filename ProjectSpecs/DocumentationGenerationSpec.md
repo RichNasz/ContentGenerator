@@ -56,7 +56,7 @@ The README must contain the following sections in this exact order:
 A single line of shields.io badges:
 - macOS 14+ (blue)
 - Swift 6.2 (orange)
-- Xcode 16+ (blue)
+- Xcode 26.3+ (blue)
 - License: MIT (green)
 
 ### 2. Project Title and Tagline
@@ -80,6 +80,7 @@ Step-by-step:
 2. Open `ContentGenerator/ContentGenerator.xcodeproj` in Xcode
 3. Build and run (Cmd+R)
 4. Note: LLMmanagement and ProjectExchange resolve automatically as local SPM packages
+5. To use Claude Code, run `claude` from the repo root (not a subdirectory)
 
 ### 8. Architecture
 Component table from ProjectOverviewSpec, plus brief explanation of the spec-driven approach.
@@ -193,7 +194,12 @@ Sections in order:
 5. How to suggest features (link to issue template)
 6. Pull request process (from ContributingSpec)
 7. Commit conventions (from ContributingSpec)
-8. Development setup (clone, build, test instructions)
+8. Development setup — four subsections in order:
+   a. Environment Verification (swift --version, xcodebuild -version)
+   b. Xcode — ContentGenerator App (open ContentGenerator/ContentGenerator.xcodeproj)
+   c. SPM Packages — LLMmanagement / ProjectExchange (swift build, swift test)
+   d. Claude Code (run from repo root, reference CLAUDE.md)
+   Followed by Key Conventions (unchanged)
 9. Security policy (from ContributingSpec)
 
 ---

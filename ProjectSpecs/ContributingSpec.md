@@ -86,14 +86,41 @@ To report a security vulnerability:
 
 ### Prerequisites
 - macOS 26.3 or later
-- Xcode 16.0 or later
-- Swift 6.2
+- Xcode 26.3 or later — required for Swift 6.2 and the macOS/iOS/visionOS 26.3 SDKs
+- Swift 6.2 (bundled with Xcode 26.3)
 
-### Building
+### Environment Verification
+Before starting work, confirm your toolchain:
+```bash
+swift --version      # must be Swift 6.2 or later
+xcodebuild -version  # must be Xcode 26.3 or later
+```
+
+### Xcode (ContentGenerator App)
 1. Clone the repository
 2. Open `ContentGenerator/ContentGenerator.xcodeproj` in Xcode
+   — this is the only `.xcodeproj` in the monorepo; do not open the repo root
 3. Build and run (Cmd+R)
 4. LLMmanagement and ProjectExchange resolve automatically as local SPM packages
+
+### SPM Packages (LLMmanagement / ProjectExchange)
+For package-only builds and tests, work from each package's directory:
+```bash
+cd LLMmanagement && swift build && swift test
+cd ProjectExchange && swift build && swift test
+```
+Package changes are reflected in the Xcode app project automatically — no manual
+re-link step required.
+
+### Claude Code
+Claude Code must be launched from the **monorepo root**, not from a subdirectory:
+```bash
+cd /path/to/ContentGenerator
+claude
+```
+Running from the root ensures all skill paths resolve correctly, CommonSpecs and
+ProjectSpecs are reachable, and the full three-target context is available. See
+`CLAUDE.md` at the repo root for the required skill-driven workflow.
 
 ### Key Conventions
 - No MVVM — views manage state directly with `@State`/`@Bindable`

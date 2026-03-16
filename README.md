@@ -1,4 +1,4 @@
-![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue) ![Swift 6.2](https://img.shields.io/badge/Swift-6.2-orange) ![Xcode 16+](https://img.shields.io/badge/Xcode-16%2B-blue) ![License: MIT](https://img.shields.io/badge/License-MIT-green)
+![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue) ![Swift 6.2](https://img.shields.io/badge/Swift-6.2-orange) ![Xcode 26.3+](https://img.shields.io/badge/Xcode-26.3%2B-blue) ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 
 # ContentGenerator
 
@@ -23,8 +23,8 @@ ContentGenerator is a native macOS application that leverages large language mod
 
 ## System Requirements
 
-- **OS:** macOS 14.0 (Sonoma) or later
-- **IDE:** Xcode 16.0 or later (for building from source)
+- **OS:** macOS 26.3 or later
+- **IDE:** Xcode 26.3 or later (for building from source)
 - **Language:** Swift 6.2
 - **LLM Access:** At least one OpenAI-compatible API endpoint (cloud or local)
 
@@ -36,8 +36,8 @@ ContentGenerator is a native macOS application that leverages large language mod
    ```
 2. Open `ContentGenerator/ContentGenerator.xcodeproj` in Xcode
 3. Build and run (Cmd+R)
-
-LLMmanagement and ProjectExchange resolve automatically as local SPM packages — no manual dependency setup required.
+4. Note: LLMmanagement and ProjectExchange resolve automatically as local SPM packages
+5. To use Claude Code, run `claude` from the repo root (not a subdirectory)
 
 ## Architecture
 

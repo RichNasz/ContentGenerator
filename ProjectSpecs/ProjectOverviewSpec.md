@@ -40,7 +40,7 @@
 ## System Requirements
 
 - **OS:** macOS 26.3 or later
-- **IDE:** Xcode 16.0 or later (for building from source)
+- **IDE:** Xcode 26.3 or later (for building from source)
 - **Language:** Swift 6.2
 - **LLM Access:** At least one OpenAI-compatible API endpoint (cloud or local)
 
