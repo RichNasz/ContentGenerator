@@ -43,21 +43,34 @@ Report one of:
 - **CHANGELOG entry found** — version is documented
 - **No CHANGELOG entry found** — version has no recorded changes (recommend running `/log-change` before distributing)
 
-## Step 4: Confirm with User
+## Step 4: Confirm with User (if warnings exist)
 
-Present a pre-flight summary and ask the user to confirm before running the build:
+Evaluate whether any pre-flight warnings were raised in Steps 1–3:
+- **Dirty tree warning**: git status was non-empty
+- **CHANGELOG warning**: no entry found for the version being built
 
-```
-## Distribution Pre-flight Summary
+**If one or more warnings exist**, present the pre-flight summary and ask the user to confirm:
 
-**Version:** [MARKETING_VERSION from Step 2]
-**Git status:** [Clean | Dirty — N files modified/untracked]
-**CHANGELOG:** [Entry found | No entry found for this version]
+    ## Distribution Pre-flight Summary
 
-Proceed with distribution build? (yes / no)
-```
+    **Version:** [MARKETING_VERSION]
+    **Git status:** [Dirty — N files modified/untracked]
+    **CHANGELOG:** [No entry found for this version]
 
-Wait for user confirmation. If the user says no, stop here.
+    ⚠️ One or more pre-flight warnings require your attention. Proceed with distribution build? (yes / no)
+
+Wait for confirmation. If the user says no, stop here.
+
+**If no warnings exist** (git is clean AND CHANGELOG entry found), display a brief summary and
+proceed directly to Step 5 without asking:
+
+    ## Distribution Pre-flight Summary
+
+    **Version:** [MARKETING_VERSION]
+    **Git status:** Clean
+    **CHANGELOG:** Entry found
+
+    All pre-flight checks passed — proceeding with build.
 
 ## Step 5: Run the Distribution Script
 

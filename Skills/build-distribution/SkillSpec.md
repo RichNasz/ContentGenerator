@@ -28,7 +28,8 @@ No arguments -- version is extracted automatically from the Xcode project's `MAR
 
 A distribution build report containing:
 - Pre-flight summary (git status, version, CHANGELOG check)
-- User confirmation prompt before the build runs
+- User confirmation prompt **only when warnings exist** (dirty git tree or missing CHANGELOG entry);
+  proceeds automatically when git is clean and a CHANGELOG entry is found
 - Build result (PASSED / FAILED)
 - Table of output artifacts with file sizes (`ContentGenerator/dist/`)
 - SHA-256 checksums displayed inline for copy-pasting

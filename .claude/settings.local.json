@@ -25,7 +25,10 @@
       "Skill(prep-for-coding)",
       "Skill(update-specs)",
       "Skill(log-change)",
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git:*)"
     ],
     "deny": [],
     "ask": []
