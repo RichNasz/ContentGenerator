@@ -1,0 +1,33 @@
+{
+  "originHash" : "ab925646b1cdf59738d354c2e1acd9e738b6da88f82e8be0011cb2033343738d",
+  "pins" : [
+    {
+      "identity" : "swift-syntax",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-syntax.git",
+      "state" : {
+        "revision" : "4799286537280063c85a32f09884cfbca301b1a1",
+        "version" : "602.0.0"
+      }
+    },
+    {
+      "identity" : "swiftchatcompletionsdsl",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/RichNasz/SwiftChatCompletionsDSL",
+      "state" : {
+        "branch" : "main",
+        "revision" : "1005dc6626fad975e543be77d9c894b3f48b147d"
+      }
+    },
+    {
+      "identity" : "swiftchatcompletionsmacros",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/RichNasz/SwiftChatCompletionsMacros",
+      "state" : {
+        "branch" : "main",
+        "revision" : "de8d209ac7f2092717f83a90b49dd5533cf6d127"
+      }
+    }
+  ],
+  "version" : 3
+}

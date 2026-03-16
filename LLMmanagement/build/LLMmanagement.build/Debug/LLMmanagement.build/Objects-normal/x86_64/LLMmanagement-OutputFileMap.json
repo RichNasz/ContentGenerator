@@ -1,0 +1,99 @@
+{
+  "" : {
+    "diagnostics" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMmanagement-primary.dia",
+    "emit-module-dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMmanagement-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMmanagement-primary-emit-module.dia",
+    "pch" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMmanagement-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMmanagement-primary.swiftdeps"
+  },
+  "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/Sources/LLMmanagement/Help/HelpContent.swift" : {
+    "const-values" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpContent.swiftconstvalues",
+    "dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpContent.d",
+    "diagnostics" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpContent.dia",
+    "index-unit-output-path" : "/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpContent.o",
+    "llvm-bc" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpContent.bc",
+    "object" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpContent.o",
+    "swift-dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpContent.swiftdeps",
+    "swiftmodule" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpContent~partial.swiftmodule"
+  },
+  "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/Sources/LLMmanagement/LLMConnection.swift" : {
+    "const-values" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnection.swiftconstvalues",
+    "dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnection.d",
+    "diagnostics" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnection.dia",
+    "index-unit-output-path" : "/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnection.o",
+    "llvm-bc" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnection.bc",
+    "object" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnection.o",
+    "swift-dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnection.swiftdeps",
+    "swiftmodule" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnection~partial.swiftmodule"
+  },
+  "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/Sources/LLMmanagement/LLMmanagement.swift" : {
+    "const-values" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMmanagement.swiftconstvalues",
+    "dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMmanagement.d",
+    "diagnostics" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMmanagement.dia",
+    "index-unit-output-path" : "/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMmanagement.o",
+    "llvm-bc" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMmanagement.bc",
+    "object" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMmanagement.o",
+    "swift-dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMmanagement.swiftdeps",
+    "swiftmodule" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMmanagement~partial.swiftmodule"
+  },
+  "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/Sources/LLMmanagement/Views/Components/HelpButton.swift" : {
+    "const-values" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpButton.swiftconstvalues",
+    "dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpButton.d",
+    "diagnostics" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpButton.dia",
+    "index-unit-output-path" : "/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpButton.o",
+    "llvm-bc" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpButton.bc",
+    "object" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpButton.o",
+    "swift-dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpButton.swiftdeps",
+    "swiftmodule" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpButton~partial.swiftmodule"
+  },
+  "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/Sources/LLMmanagement/Views/Components/HelpSheet.swift" : {
+    "const-values" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpSheet.swiftconstvalues",
+    "dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpSheet.d",
+    "diagnostics" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpSheet.dia",
+    "index-unit-output-path" : "/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpSheet.o",
+    "llvm-bc" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpSheet.bc",
+    "object" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpSheet.o",
+    "swift-dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpSheet.swiftdeps",
+    "swiftmodule" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/HelpSheet~partial.swiftmodule"
+  },
+  "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/Sources/LLMmanagement/Views/Components/LLMConnectionRow.swift" : {
+    "const-values" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionRow.swiftconstvalues",
+    "dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionRow.d",
+    "diagnostics" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionRow.dia",
+    "index-unit-output-path" : "/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionRow.o",
+    "llvm-bc" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionRow.bc",
+    "object" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionRow.o",
+    "swift-dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionRow.swiftdeps",
+    "swiftmodule" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionRow~partial.swiftmodule"
+  },
+  "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/Sources/LLMmanagement/Views/Components/LLMEmptyConnectionsView.swift" : {
+    "const-values" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMEmptyConnectionsView.swiftconstvalues",
+    "dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMEmptyConnectionsView.d",
+    "diagnostics" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMEmptyConnectionsView.dia",
+    "index-unit-output-path" : "/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMEmptyConnectionsView.o",
+    "llvm-bc" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMEmptyConnectionsView.bc",
+    "object" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMEmptyConnectionsView.o",
+    "swift-dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMEmptyConnectionsView.swiftdeps",
+    "swiftmodule" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMEmptyConnectionsView~partial.swiftmodule"
+  },
+  "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/Sources/LLMmanagement/Views/LLMConnectionEditView.swift" : {
+    "const-values" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionEditView.swiftconstvalues",
+    "dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionEditView.d",
+    "diagnostics" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionEditView.dia",
+    "index-unit-output-path" : "/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionEditView.o",
+    "llvm-bc" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionEditView.bc",
+    "object" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionEditView.o",
+    "swift-dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionEditView.swiftdeps",
+    "swiftmodule" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionEditView~partial.swiftmodule"
+  },
+  "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/Sources/LLMmanagement/Views/LLMConnectionListView.swift" : {
+    "const-values" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionListView.swiftconstvalues",
+    "dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionListView.d",
+    "diagnostics" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionListView.dia",
+    "index-unit-output-path" : "/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionListView.o",
+    "llvm-bc" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionListView.bc",
+    "object" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionListView.o",
+    "swift-dependencies" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionListView.swiftdeps",
+    "swiftmodule" : "/Users/rnaszcyn/Development/ContentGenerator/LLMmanagement/build/LLMmanagement.build/Debug/LLMmanagement.build/Objects-normal/x86_64/LLMConnectionListView~partial.swiftmodule"
+  }
+}

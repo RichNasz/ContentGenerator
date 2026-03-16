@@ -1,0 +1,71 @@
+{
+  "fill" : {
+    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "Icon-Red_Hat-User_story-A-Red-RGB.svg",
+          "name" : "Icon-Red_Hat-User_story-A-Red-RGB",
+          "position" : {
+            "scale" : 12,
+            "translation-in-points" : [
+              282.078625,
+              -46.467275000000086
+            ]
+          }
+        },
+        {
+          "image-name" : "icon-AI-experience-red-RH.svg",
+          "name" : "icon-AI-experience-red-RH",
+          "position" : {
+            "scale" : 20,
+            "translation-in-points" : [
+              -147.359375,
+              -155.546875
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "hidden" : false,
+      "layers" : [
+        {
+          "image-name" : "Content Generator.svg",
+          "name" : "Content Generator",
+          "position" : {
+            "scale" : 8,
+            "translation-in-points" : [
+              -159.609375,
+              261.5859375
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

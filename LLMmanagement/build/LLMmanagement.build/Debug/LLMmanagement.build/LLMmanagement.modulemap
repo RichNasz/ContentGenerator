@@ -1,0 +1,4 @@
+module LLMmanagement {
+header "LLMmanagement-Swift.h"
+export *
+}
