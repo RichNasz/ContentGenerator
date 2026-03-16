@@ -28,3 +28,6 @@ Packages/
 
 # App project bundles (user data, not source)
 *.cgspecs
+
+# Claude Code
+**/.claude/settings.local.json
