@@ -16,6 +16,9 @@ The following files are generated from ProjectSpecs and must conform to the rule
 | `.github/ISSUE_TEMPLATE/bug_report.md` | This spec | Bug report template |
 | `.github/ISSUE_TEMPLATE/feature_request.md` | This spec | Feature request template |
 | `.github/PULL_REQUEST_TEMPLATE.md` | ContributingSpec + this spec | PR checklist |
+| `ContentGenerator/README.md` | This spec + ContentGenerator FunctionalSpecs | App sub-project README |
+| `LLMmanagement/README.md` | This spec + LLMmanagement FunctionalSpecs | Package sub-project README |
+| `ProjectExchange/README.md` | This spec + ProjectExchange FunctionalSpecs | Package sub-project README |
 
 ## General Tone
 
@@ -77,6 +80,31 @@ MIT — link to `LICENSE` file.
 - Apple (SwiftUI, SwiftData)
 - OpenAI (API compatibility standard)
 - Contributors
+
+---
+
+## Sub-Project README Files
+
+Each subproject directory (`ContentGenerator/`, `LLMmanagement/`, `ProjectExchange/`) has its own README.md. These are generated from the target's FunctionalSpecs and must conform to the following rules.
+
+### Structure (all sub-READMEs)
+
+1. **H1 Title** — Component name with type in parentheses (e.g., "LLMmanagement (Swift Package)")
+2. **Description** — One paragraph from the target's FunctionalSpecs overview
+3. **Role in Monorepo** — How the app references this component (local SPM package, Xcode project)
+4. **Key Features** — Brief bullet list drawn from FunctionalSpecs core functionality
+5. **Specs** — Link to the target's `Specs/` folder
+6. **Building** — Target-specific build instructions:
+   - App: open `.xcodeproj` in Xcode, Cmd+R
+   - SPM packages: `swift build` / `swift test`
+7. **Back Link** — Link back to root `../README.md`
+
+### Rules
+
+- No badge row (badges are root-level only)
+- No duplicate of root README content (architecture, contributing, license)
+- Keep concise — sub-READMEs orient the reader, not replicate AppDocumentation.md
+- Same tone rules as root README (professional, precise, no emojis)
 
 ---
 
