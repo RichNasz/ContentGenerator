@@ -61,3 +61,27 @@ The app references LLMmanagement and ProjectExchange as local SPM packages. All 
 - **`ProjectSpecs/`** — Monorepo-level specs (this folder): project overview, documentation rules, contribution guidelines, repository structure
 - **`CommonSpecs/`** — Shared Swift development reference specs used across all targets
 - **`<Target>/Specs/`** — Target-specific specs: FunctionalSpecs (WHAT), SwiftTechSpecs (HOW), CodeLessonsLearned (error patterns)
+
+### AI Tooling Structure
+
+The monorepo root `.claude/` directory contains the Claude Code skill definitions that
+implement the spec-driven workflow described in `CLAUDE.md`:
+
+- **`.claude/skills/`** — Workflow skills invoked via slash commands in Claude Code:
+  - `prep-for-coding` — reads applicable specs before code generation
+  - `validate-build` — runs phased build validation and classifies errors
+  - `log-error` — documents resolved errors in CodeLessonsLearned
+  - `update-specs` — updates specs after functionality changes
+  - `validate-specs` — checks spec consistency and cross-references
+  - `validate-commit` — validates commit message format
+  - `log-change` — proposes changelog entries
+  - `run-tests` — runs Swift Testing suite
+  - `generate-repo-docs` — regenerates README, CONTRIBUTING, and issue templates
+  - `generate-docc` — generates or validates DocC documentation
+  - `evaluate-specs` — on-demand specification quality audit
+  - `validate-integration` — builds all three targets in dependency order
+  - `build-distribution` — builds unsigned distribution package (ZIP + DMG)
+
+Sub-projects (`ContentGenerator/`, `LLMmanagement/`) contain `.claude/settings.local.json`
+for per-project Claude Code settings; these files are gitignored and contain no skills.
+Skills are defined only at the monorepo root and apply to the full three-target context.
