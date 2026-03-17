@@ -302,7 +302,7 @@ struct ProjectContentGenerationWindow: View {
                 }
 
                 // Stream the response
-                let stream = client.stream(request)
+                let stream = try await client.stream(request)
                 var fullContent = ""
 
                 // Throttling: update UI at most every 50ms (20 fps) for smooth streaming
@@ -310,7 +310,10 @@ struct ProjectContentGenerationWindow: View {
                 let updateInterval: TimeInterval = 0.05
 
                 for try await delta in stream {
-                    if let content = delta.choices.first?.delta.content {
+                    let contentPiece = delta.choices.first?.delta.content
+                    let finishReason = delta.choices.first?.finishReason
+
+                    if let content = contentPiece {
                         fullContent += content
 
                         // Only update UI if enough time has passed
@@ -324,7 +327,7 @@ struct ProjectContentGenerationWindow: View {
                     }
 
                     // Check if streaming is complete
-                    if delta.choices.first?.finishReason != nil {
+                    if finishReason != nil {
                         break
                     }
                 }

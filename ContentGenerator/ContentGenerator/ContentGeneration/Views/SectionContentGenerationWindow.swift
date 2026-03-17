@@ -413,17 +413,8 @@ struct SectionContentGenerationWindow: View {
                 // ResourceTimeout: 30-3600 seconds per SwiftChatCompletionsDSL
                 let validResourceTimeout = max(30, min(3600, TimeInterval(llmConnection.requestTimeoutSeconds)))
 
-                #if DEBUG
-                print("🔍 LLM Request Debug:")
-                print("  - Model: \(llmConnection.selectedModel)")
-                print("  - Request Timeout: \(validRequestTimeout)s")
-                print("  - Resource Timeout: \(validResourceTimeout)s")
-                print("  - Endpoint: \(llmConnection.fullApiUrl)")
-                #endif
-
                 let request = try ChatRequest(model: llmConnection.selectedModel, stream: true) {
                     try Temperature(0.7)
-                    try MaxTokens(1000)
                     try RequestTimeout(validRequestTimeout)
                     try ResourceTimeout(validResourceTimeout)
                 } messages: {
@@ -431,7 +422,7 @@ struct SectionContentGenerationWindow: View {
                 }
 
                 // Stream the response
-                let stream = client.stream(request)
+                let stream = try await client.stream(request)
                 // Always start with empty content for each new generation
                 var fullContent = ""
 
@@ -440,7 +431,10 @@ struct SectionContentGenerationWindow: View {
                 let updateInterval: TimeInterval = 0.05
 
                 for try await delta in stream {
-                    if let content = delta.choices.first?.delta.content {
+                    let contentPiece = delta.choices.first?.delta.content
+                    let finishReason = delta.choices.first?.finishReason
+
+                    if let content = contentPiece {
                         fullContent += content
 
                         // Only update UI if enough time has passed
@@ -454,7 +448,7 @@ struct SectionContentGenerationWindow: View {
                     }
 
                     // Check if streaming is complete
-                    if delta.choices.first?.finishReason != nil {
+                    if finishReason != nil {
                         break
                     }
                 }
