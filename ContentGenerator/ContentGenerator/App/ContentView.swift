@@ -478,9 +478,8 @@ private struct WindowTitle: NSViewRepresentable {
             } else {
                 observation = view.observe(\.window, options: [.new]) { [weak self] observedView, _ in
                     guard let self else { return }
-                    let title = self.pendingTitle
-                    Task { @MainActor in
-                        observedView.window?.title = title
+                    Task { @MainActor [self, observedView] in
+                        observedView.window?.title = self.pendingTitle
                         self.observation = nil
                     }
                 }

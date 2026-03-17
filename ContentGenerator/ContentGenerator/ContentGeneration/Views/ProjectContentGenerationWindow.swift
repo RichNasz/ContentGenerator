@@ -302,7 +302,7 @@ struct ProjectContentGenerationWindow: View {
                 }
 
                 // Stream the response
-                let stream = try await client.stream(request)
+                let stream = client.stream(request)
                 var fullContent = ""
 
                 // Throttling: update UI at most every 50ms (20 fps) for smooth streaming

@@ -422,7 +422,7 @@ struct SectionContentGenerationWindow: View {
                 }
 
                 // Stream the response
-                let stream = try await client.stream(request)
+                let stream = client.stream(request)
                 // Always start with empty content for each new generation
                 var fullContent = ""
 
