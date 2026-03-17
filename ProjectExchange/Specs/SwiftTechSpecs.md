@@ -24,11 +24,31 @@ This implementation must follow patterns and standards defined in the common spe
 - No dependencies on SwiftData or persistence frameworks
 - No business logic or side effects in transfer objects
 
+### ExportableFileAttachment Properties
+
+`ExportableFileAttachment` carries both metadata and (when available) the raw file bytes:
+
+```swift
+public struct ExportableFileAttachment: Codable, Sendable {
+    public let originalFileName: String
+    public let originalFilePath: String?    // Resolved at export time; informational only
+    public let fileExtension: String?
+    public let fileSizeBytes: Int64
+    public let fileContentBase64: String?   // Base64-encoded raw bytes; nil for inaccessible legacy attachments
+    public let createdAt: Date
+    public let modifiedAt: Date
+}
+```
+
+- `fileContentBase64` is optional for backward compatibility: old exports that omit it decode to `nil` automatically (Swift `Codable` nil-for-missing behavior)
+- Importers write the decoded bytes to `bundle/projects/<uuid>/attachments/<originalFileName>` when the field is present; otherwise the attachment is imported as inaccessible
+
 ### Property Naming
 
 **Naming Conventions**
 - Match source model property names where semantically appropriate
 - Use `originalFilePath` not `filePath` to clarify export-time resolution
+- Use `fileContentBase64` (not `fileContent` or `encodedContent`) to explicitly signal the encoding
 - Use descriptive names for export-specific properties (e.g., `schemaVersion`)
 - Avoid abbreviations except for well-known terms (URL, UUID, LLM)
 
@@ -199,6 +219,6 @@ Sources/ProjectExchange/
 
 ---
 
-**Last Updated**: 2026-03-03
+**Last Updated**: 2026-03-17
 **Swift Version**: 6.2 (swift-tools-version: 6.2)
 **Note**: ProjectExchange is a Foundation-only Swift Package with no SwiftData or SwiftUI dependencies. Full Swift 6 strict concurrency applies (`Sendable` conformance required on all public types).

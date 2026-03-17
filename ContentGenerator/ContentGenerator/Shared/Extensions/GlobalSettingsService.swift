@@ -57,8 +57,10 @@ final class GlobalSettingsService {
 @Observable
 final class ProjectDataManager {
     private let container: ModelContainer
+    let bundleURL: URL
 
     init(bundleURL: URL) throws {
+        self.bundleURL = bundleURL
         let fileManager = FileManager.default
         if !fileManager.fileExists(atPath: bundleURL.path) {
             try fileManager.createDirectory(at: bundleURL, withIntermediateDirectories: true)
@@ -102,6 +104,16 @@ final class ProjectDataManager {
     /// Create a context for data operations
     func createContext() -> ModelContext {
         return ModelContext(container)
+    }
+
+    /// Returns the `projects/<uuid>/attachments/` directory for a project, creating it if needed.
+    func attachmentsDirectory(for projectId: UUID) throws -> URL {
+        let dir = bundleURL
+            .appendingPathComponent("projects")
+            .appendingPathComponent(projectId.uuidString)
+            .appendingPathComponent("attachments")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
     }
 }
 

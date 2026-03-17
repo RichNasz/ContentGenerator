@@ -286,21 +286,41 @@ final class ProjectExportService {
 
         // Note: Generated content is not imported (users regenerate after import)
 
-        // Import file attachment metadata as inaccessible records
+        // Import file attachments — write embedded content to bundle when available
+        var inaccessibleCount = 0
         for attachmentMeta in exportable.attachmentMetadata {
             let attachment = FileAttachment(
                 originalFileName: attachmentMeta.originalFileName,
                 fileSizeBytes: attachmentMeta.fileSizeBytes
             )
             attachment.fileExtension = attachmentMeta.fileExtension
-            attachment.isAccessible = false  // No security-scoped bookmark
-            attachment.securityScopedBookmarkData = nil
             attachment.project = project
+
+            if let base64 = attachmentMeta.fileContentBase64,
+               let fileData = Data(base64Encoded: base64) {
+                // Write the embedded file into the new bundle
+                do {
+                    let attachmentsDir = try dataManager.attachmentsDirectory(for: project.id)
+                    let destURL = attachmentsDir.appendingPathComponent(attachmentMeta.originalFileName)
+                    try fileData.write(to: destURL)
+                    attachment.relativeBundlePath = "projects/\(project.id.uuidString)/attachments/\(attachmentMeta.originalFileName)"
+                    attachment.isAccessible = true
+                } catch {
+                    attachment.isAccessible = false
+                    inaccessibleCount += 1
+                    warnings.append("Could not restore '\(attachmentMeta.originalFileName)': \(error.localizedDescription)")
+                }
+            } else {
+                // No embedded content (legacy export) — user must locate manually
+                attachment.isAccessible = false
+                inaccessibleCount += 1
+            }
+
             project.attachments.append(attachment)
         }
 
-        if !exportable.attachmentMetadata.isEmpty {
-            warnings.append("\(exportable.attachmentMetadata.count) file attachment(s) imported. Use 'Locate' to re-link files.")
+        if inaccessibleCount > 0 {
+            warnings.append("\(inaccessibleCount) file attachment(s) could not be restored automatically. Use 'Locate' to re-link them.")
         }
 
         if finalLLMConnectionId == nil && !exportable.llmConfigurations.isEmpty {
@@ -357,18 +377,22 @@ final class ProjectExportService {
 
         // Note: Generated content is not exported (users regenerate after import)
 
-        // Convert attachment metadata with file path resolution
+        // Convert attachments, embedding file contents when available
         var exportableAttachments: [ExportableFileAttachment] = []
         for attachment in project.attachments {
-            let filePath = await resolveFilePath(for: attachment)
+            let fileContentBase64 = await readFileContentBase64(for: attachment)
+            let resolvedPath: String? = attachment.relativeBundlePath.map {
+                dataManager.bundleURL.appendingPathComponent($0).path
+            }
             exportableAttachments.append(
                 ExportableFileAttachment(
                     originalFileName: attachment.originalFileName,
-                    originalFilePath: filePath,
+                    originalFilePath: resolvedPath,
                     fileExtension: attachment.fileExtension,
                     fileSizeBytes: attachment.fileSizeBytes,
                     createdAt: attachment.createdAt,
-                    modifiedAt: attachment.modifiedAt
+                    modifiedAt: attachment.modifiedAt,
+                    fileContentBase64: fileContentBase64
                 )
             )
         }
@@ -387,16 +411,29 @@ final class ProjectExportService {
         )
     }
 
-    private func resolveFilePath(for attachment: FileAttachment) async -> String? {
-        // Try to access the file to get its URL
+    /// Reads raw file bytes and returns them as a base64 string for embedding in the export JSON.
+    /// Returns `nil` if the file is not accessible.
+    private func readFileContentBase64(for attachment: FileAttachment) async -> String? {
+        // Bundle-based: read directly from the bundle path
+        if let relativePath = attachment.relativeBundlePath {
+            let fileURL = dataManager.bundleURL.appendingPathComponent(relativePath)
+            do {
+                let data = try Data(contentsOf: fileURL)
+                return data.base64EncodedString()
+            } catch {
+                return nil
+            }
+        }
+
+        // Legacy bookmark-based: resolve via security-scoped bookmark
         do {
             if let url = try await fileAttachmentManager.accessFile(attachment: attachment) {
-                let path = url.path
-                url.stopAccessingSecurityScopedResource()
-                return path
+                defer { url.stopAccessingSecurityScopedResource() }
+                let data = try Data(contentsOf: url)
+                return data.base64EncodedString()
             }
         } catch {
-            // File not accessible, return nil
+            // File not accessible
         }
         return nil
     }

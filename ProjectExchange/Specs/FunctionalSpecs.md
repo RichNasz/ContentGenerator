@@ -42,16 +42,15 @@ ProjectExchange is a library that provides portable transfer objects for importi
 - Project-level LLM connection reference (for content generation)
 - Specification sections: name, content, prompts, ordering, enabled state
 - Section-level LLM connection references (for assistant functionality)
-- File attachment metadata: original filename, file path, extension, size
+- File attachment metadata: original filename, resolved file path, extension, size, timestamps
+- File attachment contents: base64-encoded raw file bytes (`fileContentBase64`) when the file was stored inside the bundle and readable at export time
 - LLM configurations: array of all unique LLM connections used (project + sections, deduplicated)
   - Each configuration includes: id, name, model, base URL, endpoint type, timeout
 
 **What is NOT Included**
 - API keys: Excluded for security (never exported)
 - Security-scoped bookmark data: Platform-specific, not portable
-- File contents: Only metadata exported, not actual file data
-  - Metadata includes: filename, extension, size, timestamps
-  - Files appear as "inaccessible" after import until user re-links them via "Locate" button
+- File contents for inaccessible attachments: `fileContentBase64` is `nil` for legacy attachments that could not be read; those appear as inaccessible after import until the user re-links via "Locate"
 - Generated content: Users regenerate after import
 - Internal identifiers: Project, specification, section, and attachment IDs are not exported; fresh UUIDs generated on import
   - Exception: LLM configuration IDs are exported to maintain references between llmConnectionId fields and configurations

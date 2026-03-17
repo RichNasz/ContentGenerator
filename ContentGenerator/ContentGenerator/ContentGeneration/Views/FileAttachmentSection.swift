@@ -20,6 +20,8 @@ struct FileAttachmentSection: View {
     @State private var showingError = false
     @State private var errorMessage = ""
     @State private var dragIsTargeted = false
+    @State private var pendingReplacements: [(url: URL, existingFileName: String)] = []
+    @State private var showingReplaceConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -60,6 +62,37 @@ struct FileAttachmentSection: View {
             Button("OK") { }
         } message: {
             Text(errorMessage)
+        }
+        .confirmationDialog(
+            "Replace \"\(pendingReplacements.first?.existingFileName ?? "")\"?",
+            isPresented: $showingReplaceConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Replace", role: .destructive) {
+                guard let pending = pendingReplacements.first else { return }
+                pendingReplacements.removeFirst()
+                if let existing = project.attachments.first(where: { $0.originalFileName == pending.existingFileName }) {
+                    Task {
+                        do {
+                            try await attachmentManager.replaceAttachment(existing, withFileAt: pending.url)
+                        } catch {
+                            await MainActor.run {
+                                errorMessage = error.localizedDescription
+                                showingError = true
+                            }
+                        }
+                        await MainActor.run { showNextReplacement() }
+                    }
+                } else {
+                    showNextReplacement()
+                }
+            }
+            Button("Keep Existing", role: .cancel) {
+                pendingReplacements.removeFirst()
+                showNextReplacement()
+            }
+        } message: {
+            Text("A file named \"\(pendingReplacements.first?.existingFileName ?? "")\" is already attached to this project. Do you want to replace it with the selected file? This cannot be undone.")
         }
     }
 
@@ -109,18 +142,16 @@ struct FileAttachmentSection: View {
 
         Task {
             do {
-                let newAttachments = try await attachmentManager.selectAndAttachFiles(to: project)
+                let result = try await attachmentManager.selectAndAttachFiles(to: project)
 
                 await MainActor.run {
-                    for attachment in newAttachments {
+                    for attachment in result.attachments {
                         project.addAttachment(attachment)
                     }
                     isLoading = false
-
-                    if newAttachments.isEmpty {
-                        // User cancelled selection
-                    } else {
-                        print("Added \(newAttachments.count) reference content file(s)")
+                    if !result.duplicates.isEmpty {
+                        pendingReplacements.append(contentsOf: result.duplicates)
+                        showNextReplacement()
                     }
                 }
             } catch {
@@ -133,9 +164,13 @@ struct FileAttachmentSection: View {
         }
     }
 
+    private func showNextReplacement() {
+        showingReplaceConfirmation = !pendingReplacements.isEmpty
+    }
+
     private func removeAttachment(_ attachment: FileAttachment) {
         withAnimation(.easeOut(duration: 0.2)) {
-            project.removeAttachment(attachment)
+            attachmentManager.removeAttachment(attachment, from: project)
         }
     }
 
@@ -209,6 +244,12 @@ struct FileAttachmentSection: View {
                     }
                     isLoading = false
                 }
+            }
+        } catch FileAttachmentError.duplicateAttachment(let fileName) {
+            await MainActor.run {
+                pendingReplacements.append((url: url, existingFileName: fileName))
+                isLoading = false
+                showNextReplacement()
             }
         } catch {
             await MainActor.run {

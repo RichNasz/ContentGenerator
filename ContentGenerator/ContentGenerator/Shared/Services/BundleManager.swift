@@ -25,6 +25,17 @@ enum BundleState: Sendable {
     case error(String)
 }
 
+enum BundleManagerError: LocalizedError {
+    case noBundleSelected
+
+    var errorDescription: String? {
+        switch self {
+        case .noBundleSelected:
+            return "No bundle is currently open. Please create or open a bundle first."
+        }
+    }
+}
+
 // MARK: - Bundle Manager
 
 @MainActor
@@ -149,6 +160,22 @@ final class BundleManager {
             bundleState = .error("Could not restore saved bundle: \(error.localizedDescription)")
             return nil
         }
+    }
+
+    // MARK: - Attachments Directory Helper
+
+    /// Returns the `projects/<uuid>/attachments/` directory within the bundle, creating it if needed.
+    /// - Throws: `BundleManagerError.noBundleSelected` if no bundle is open.
+    func attachmentsDirectory(for projectId: UUID) throws -> URL {
+        guard let bundleURL else {
+            throw BundleManagerError.noBundleSelected
+        }
+        let dir = bundleURL
+            .appendingPathComponent("projects")
+            .appendingPathComponent(projectId.uuidString)
+            .appendingPathComponent("attachments")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
     }
 
     // MARK: - Bookmark Persistence

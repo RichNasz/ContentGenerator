@@ -223,6 +223,9 @@ final class FileAttachment {
     var fileExtension: String?
     var fileSizeBytes: Int64
     var securityScopedBookmarkData: Data?
+    /// Path relative to the bundle root, e.g. `projects/<uuid>/attachments/report.md`.
+    /// When set, the file is stored inside the bundle and no per-file bookmark is needed.
+    var relativeBundlePath: String?
     var createdAt: Date
     var modifiedAt: Date
     var isAccessible: Bool
@@ -236,6 +239,7 @@ final class FileAttachment {
         self.fileExtension = URL(fileURLWithPath: originalFileName).pathExtension.lowercased()
         self.fileSizeBytes = fileSizeBytes
         self.securityScopedBookmarkData = nil
+        self.relativeBundlePath = nil
         self.createdAt = Date()
         self.modifiedAt = Date()
         self.isAccessible = true
