@@ -275,6 +275,7 @@ struct ContentView: View {
             do {
                 // Get projects to delete
                 let projectsToRemove = offsets.map { projects[$0] }
+                let projectIdsToRemove = projectsToRemove.map { $0.id }
 
                 // If the selected project is being deleted, clear selection
                 if case .project(let selectedProject) = selectedDestination,
@@ -293,6 +294,15 @@ struct ContentView: View {
                 }
 
                 try context.save()
+
+                // Delete each project's bundle directory (non-fatal)
+                let bundleURL = dataManager.bundleURL
+                for projectId in projectIdsToRemove {
+                    let projectDir = bundleURL
+                        .appendingPathComponent("projects")
+                        .appendingPathComponent(projectId.uuidString)
+                    try? FileManager.default.removeItem(at: projectDir)
+                }
 
                 await MainActor.run {
                     projectsToDelete = nil

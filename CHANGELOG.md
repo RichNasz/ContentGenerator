@@ -21,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- [ContentGenerator] Fix orphaned bundle directories accumulating on project deletion by removing each project's `projects/<uuid>/` directory from disk after the SwiftData delete is committed
+
 ### Security
 
 ## [2.0] - 2026-03-16

@@ -303,6 +303,28 @@ final class GlobalSettingsService {
 }
 ```
 
+#### Project Deletion Bundle Cleanup Pattern
+
+When a project is deleted in `confirmDeleteProjects()` (ContentView), its `projects/<uuid>/` directory must be removed from the bundle after the SwiftData save succeeds:
+
+1. **Capture IDs before deletion**: Map `offsets → project UUIDs` while the `@Query` objects are still live (before `context.delete` is called)
+2. **Delete after save**: After `try context.save()`, iterate over the captured UUIDs and remove each project directory using `try? FileManager.default.removeItem(at:)`
+3. **Non-fatal**: Use `try?` so a missing directory (project had no attachments) does not interrupt cleanup of subsequent projects
+4. **Path construction**: `dataManager.bundleURL.appendingPathComponent("projects").appendingPathComponent(projectId.uuidString)` — stops at the project level (not the `attachments/` subdirectory) to clean up the full project footprint
+
+```swift
+// Inside confirmDeleteProjects(), after try context.save():
+let bundleURL = dataManager.bundleURL
+for projectId in projectIdsToRemove {
+    let projectDir = bundleURL
+        .appendingPathComponent("projects")
+        .appendingPathComponent(projectId.uuidString)
+    try? FileManager.default.removeItem(at: projectDir)
+}
+```
+
+This mirrors the non-fatal `try? FileManager.default.removeItem(at:)` pattern used in `FileAttachmentManager.removeAttachment(_:from:)`.
+
 #### BundleManager Pattern
 ```swift
 // Manages bundle creation, opening, and restoration
@@ -1051,6 +1073,6 @@ nonisolated func batchUpdateProjects(_ updates: [ProjectUpdate]) async throws {
 
 ---
 
-**Last Updated**: 2026-03-17 (updated: FileSelectionResult, replaceAttachment, and duplicate confirmation queue pattern added to File Attachment Service)
+**Last Updated**: 2026-03-17 (updated: project deletion bundle directory cleanup pattern added)
 **Swift Version**: 6.2.3 (Xcode toolchain), language version 6.2, with Default MainActor Isolation
 **Important:** This document provides implementation guidance only. Actual code should be generated and compiled to ensure correctness. Update this document as architectural decisions are made during development.

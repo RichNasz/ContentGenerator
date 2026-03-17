@@ -31,6 +31,7 @@
   - Context menus (right-click) with Delete option
   - Confirmation dialogs prevent accidental deletion
   - Selection automatically cleared when selected project is deleted
+  - Each deleted project's `projects/<uuid>/` bundle directory is automatically removed from disk after the database deletion is committed, preventing orphaned directories from accumulating in the bundle
 - **Project Selection:** Users select projects from sidebar to access project-specific functionality
 - **Project Isolation:** Each project maintains completely separate data with no cross-project sharing
 - **Project Organization:** Projects are listed in sidebar for easy access and management
@@ -315,4 +316,4 @@ When importing a project with file attachments:
 
 **Note:** This specification will be updated as functionality is developed. Each new feature should be documented here in language-agnostic terms focusing on WHAT the feature does, not HOW it's implemented.
 
-**Last Updated:** 2026-03-17
+**Last Updated:** 2026-03-17 (updated: project deletion now cleans up bundle directory on disk)
