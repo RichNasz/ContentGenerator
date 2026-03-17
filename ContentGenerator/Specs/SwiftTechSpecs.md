@@ -234,12 +234,13 @@ struct SomeListView: View {
 #### ProjectDataManager
 ```swift
 // Manages the SwiftData ModelContainer for the application
-@MainActor
 @Observable
 final class ProjectDataManager {
     private let container: ModelContainer
+    let bundleURL: URL  // Stored at init time; exposed for services that resolve bundle-relative file paths
 
     init(bundleURL: URL) throws {
+        self.bundleURL = bundleURL
         // Creates ModelContainer with all app models, stored within the bundle
         container = try ModelContainer(
             for: Schema([
@@ -251,7 +252,7 @@ final class ProjectDataManager {
                 ApplicationSettings.self,
                 LLMConnection.self   // From LLMmanagement package
             ]),
-            configurations: ModelConfiguration(url: bundleURL.appending(path: "swiftdata/Application.store"))
+            configurations: ModelConfiguration(url: bundleURL.appending(path: "swiftdata/default.store"))
         )
     }
 
@@ -261,6 +262,16 @@ final class ProjectDataManager {
 
     func createContext() -> ModelContext {
         return ModelContext(container)
+    }
+
+    /// Returns the `projects/<uuid>/attachments/` directory for a project, creating it if needed.
+    func attachmentsDirectory(for projectId: UUID) throws -> URL {
+        let dir = bundleURL
+            .appendingPathComponent("projects")
+            .appendingPathComponent(projectId.uuidString)
+            .appendingPathComponent("attachments")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
     }
 }
 ```
@@ -298,37 +309,135 @@ final class GlobalSettingsService {
 @MainActor
 @Observable
 final class BundleManager {
+    private(set) var bundleURL: URL?
     var bundleState: BundleState = .noBundleSelected
 
-    enum BundleState {
-        case noBundleSelected
-        case loading
-        case ready(URL)
-        case error(String)
-    }
+    func createNewBundle() async -> URL? { /* ... creates swiftdata/ and projects/ subdirs */ }
+    func openExistingBundle() async -> URL? { /* ... */ }
+    func restoreSavedBundle() -> URL? { /* ... */ }
 
-    func createNewBundle() { /* ... */ }
-    func openExistingBundle() { /* ... */ }
-    func restoreSavedBundle() { /* ... */ }
+    /// Returns the `projects/<uuid>/attachments/` directory within the bundle, creating it if needed.
+    /// - Throws: `BundleManagerError.noBundleSelected` if no bundle is open.
+    func attachmentsDirectory(for projectId: UUID) throws -> URL { /* ... */ }
+}
+
+enum BundleState: Sendable {
+    case noBundleSelected
+    case loading
+    case ready(URL)
+    case error(String)
+}
+
+enum BundleManagerError: LocalizedError {
+    case noBundleSelected
 }
 ```
 
 ### File Attachment Service Pattern
 
-The `FileAttachmentManager` handles file attachments with security-scoped bookmark support for macOS sandbox compliance.
+The `FileAttachmentManager` handles file attachments by copying files into the `.cgspecs` bundle at attach time. The bundle's single security-scoped bookmark (held by `BundleManager`) covers all files inside it, eliminating per-file bookmark management.
 
 **Architecture Pattern:**
-- Uses `@MainActor` and `@Observable` for UI integration
-- Depends on `ProjectDataManager` for persistence
-- Manages security-scoped bookmark creation and resolution
-- Handles file access in sandboxed environment
+- `@Observable` class with default MainActor isolation (no explicit `@MainActor` needed on the class)
+- Depends on `ProjectDataManager` (which exposes `bundleURL: URL`)
+- Files stored at `bundle/projects/<uuid>/attachments/<filename>`; a relative path string is stored on `FileAttachment`
+- Legacy attachments (created before this pattern) use `securityScopedBookmarkData` as a fallback
 
-**Security-Scoped Bookmark Pattern:**
-- Bookmarks created when files are attached (user-granted access)
-- Bookmarks resolved to URLs when file content is needed
-- `startAccessingSecurityScopedResource()` called before file access
-- `stopAccessingSecurityScopedResource()` called when access complete
-- Bookmarks are app-specific and machine-specific (not portable)
+**`FileSelectionResult` (returned by `selectAndAttachFiles(to:)`):**
+```swift
+struct FileSelectionResult {
+    var attachments: [FileAttachment]  // Successfully created, ready to add to project
+    var duplicates: [(url: URL, existingFileName: String)]
+    // url: source URL of the new file the user selected
+    // existingFileName: the originalFileName of the conflicting existing FileAttachment record
+    //                   (used to look up the record via project.attachments.first(where:))
+}
+```
+`selectAndAttachFiles(to:)` catches `.duplicateAttachment` separately from other errors. New and duplicate files are returned together so the caller can add the new ones immediately and queue the duplicates for confirmation.
+
+`selectAndAttachFiles(to:)` catch behaviour in the per-file loop:
+- `.duplicateAttachment(fileName:)` → appended to `result.duplicates`; processing continues for remaining files
+- Any other error → logged to console; file skipped; processing continues
+- If the user cancels the file picker (does not confirm): returns `FileSelectionResult(attachments: [], duplicates: [])` immediately
+
+**Bundle Storage Pattern:**
+- On attach: copy the user-selected file into `dataManager.attachmentsDirectory(for: project.id)`; store the relative path in `FileAttachment.relativeBundlePath`
+- Filename conflicts within the same project's attachments directory are resolved with a numeric suffix (`report-2.md`, etc.)
+- On access: resolve `dataManager.bundleURL.appendingPathComponent(relativeBundlePath)` directly — no `startAccessingSecurityScopedResource()` needed
+- On remove: call `FileAttachmentManager.removeAttachment(_:from:)` — deletes the physical bundle copy via `FileManager.default.removeItem(at:)` (using `try?` so a missing file is not an error), then removes the SwiftData record via `project.removeAttachment(_:)`. Views must NOT call `project.removeAttachment(_:)` directly; always go through `FileAttachmentManager`
+- On replace: call `FileAttachmentManager.replaceAttachment(_:withFileAt:)` — deletes the old bundle copy (`try?`), copies the new file using `existing.originalFileName` as the canonical destination name (normalises any previously suffixed path), and mutates the existing `FileAttachment` record in-place (same UUID, updated `relativeBundlePath`, `fileSizeBytes`, `isAccessible`, and `modifiedAt`). The SwiftData record is never removed and re-added; identity is preserved
+
+**`replaceAttachment(_ existing: FileAttachment, withFileAt sourceURL: URL) async throws` (FileAttachmentManager):**
+
+Signature:
+```swift
+@MainActor
+func replaceAttachment(_ existing: FileAttachment, withFileAt sourceURL: URL) async throws
+```
+
+Parameters:
+- `existing`: the in-place `FileAttachment` SwiftData record to update
+- `sourceURL`: the URL of the new file to copy into the bundle
+
+Execution sequence (all on MainActor):
+1. `validateFile(at: sourceURL)` — type, size, file-URL checks; throws on failure before touching anything
+2. Guard `existing.project?.id` — throws `.fileCopyFailed` if attachment has no associated project
+3. `try? FileManager.default.removeItem(at: oldURL)` — delete old bundle copy (non-fatal; continues if missing)
+4. `FileManager.default.copyItem(at: sourceURL, to: attachmentsDir.appendingPathComponent(existing.originalFileName))` — uses `originalFileName` as canonical destination (normalises any previously suffixed path from the old record); throws `.fileCopyFailed(error)` on copy failure
+5. Update existing record in-place: `relativeBundlePath`, `isAccessible = true`, `fileSizeBytes` (via `try?` resourceValues; non-fatal), `updateModifiedDate()`
+
+Error cases:
+- `.fileCopyFailed(NSError)` — no associated project
+- `.fileCopyFailed(Error)` — file copy to bundle failed
+- Validation errors from `validateFile()`: `.notAFileURL`, `.notARegularFile`, `.fileTooLarge`, `.unsupportedFileType`
+
+- Calling `stopAccessingSecurityScopedResource()` on a bundle-file URL is a safe no-op; callers do not need to change their defer patterns
+- Stale bookmark detection and refresh are not needed for bundle-based attachments
+
+**Legacy Fallback:**
+- If `relativeBundlePath` is nil, fall back to resolving `securityScopedBookmarkData` via the old security-scoped bookmark API
+- Old attachments show "Locate" button; when user locates the file, it is copied into the bundle and `relativeBundlePath` is set
+
+**`FileAttachmentError` cases:**
+- `.fileCopyFailed(Error)` — file copy to bundle failed
+- `.fileNotFoundInBundle` — `relativeBundlePath` set but file missing from bundle
+- `.noBookmarkData` — legacy path: neither relative path nor bookmark available
+- `.bookmarkResolutionFailed(Error)` — legacy path: bookmark resolve failed
+- `.cannotAccessSecurityScopedResource` — legacy path: could not start accessing
+- `.fileTooLarge`, `.unsupportedFileType`, `.notAFileURL`, `.notARegularFile`, `.duplicateAttachment`, `.fileReadFailed`, `.unableToReadFileSize` — validation errors (unchanged)
+
+**Duplicate Confirmation Pattern (`FileAttachmentSection`):**
+
+Full `@State` properties relevant to attachment handling:
+```swift
+@State private var isLoading = false                                         // disables Add button; shown in file list
+@State private var showingError = false                                      // drives error .alert
+@State private var errorMessage = ""                                         // error .alert message text
+@State private var dragIsTargeted = false                                    // drives drop-zone highlight border
+@State private var pendingReplacements: [(url: URL, existingFileName: String)] = []
+@State private var showingReplaceConfirmation = false
+```
+
+`showNextReplacement()` — sets `showingReplaceConfirmation = !pendingReplacements.isEmpty`.
+
+**File-picker path (`addAttachments()`):**
+1. Call `attachmentManager.selectAndAttachFiles(to: project)` → `FileSelectionResult`
+2. Add `result.attachments` to project immediately
+3. Append `result.duplicates` to `pendingReplacements`; call `showNextReplacement()`
+
+**Drag-and-drop path (`processDraggedFile(url:)`):**
+- Catch `.duplicateAttachment(let fileName)` specifically: append `(url: url, existingFileName: fileName)` to `pendingReplacements`, set `isLoading = false`, call `showNextReplacement()`
+- Catch all other errors: set `errorMessage` + `showingError = true`, set `isLoading = false`
+
+**`.confirmationDialog` (chained after `.alert` on the view body):**
+- Title: `"Replace \"<pendingReplacements.first?.existingFileName>\"?"`; `titleVisibility: .visible`
+- Message: `"A file named \"...<existingFileName>...\" is already attached... This cannot be undone."`
+- Button "Replace" (`role: .destructive`):
+  1. Pop `pendingReplacements.first`
+  2. Look up `existing = project.attachments.first(where: { $0.originalFileName == pending.existingFileName })`
+  3. If found: call `attachmentManager.replaceAttachment(existing, withFileAt: pending.url)` inside `Task`; on error set `errorMessage`/`showingError`; call `showNextReplacement()` regardless (error or success)
+  4. If not found (edge case — attachment was removed between queue and dialog): call `showNextReplacement()` directly
+- Button "Keep Existing" (`role: .cancel`): pop `pendingReplacements.first`, call `showNextReplacement()`
 
 ### Project Import/Export Service Pattern
 
@@ -356,7 +465,8 @@ The `ProjectExportService` handles project import and export operations, followi
 **Security Considerations:**
 - API keys are never included in exports
 - Security-scoped bookmark data is not portable and is excluded
-- File contents are not embedded; only metadata (path, name, size) is exported
+- File contents are base64-encoded into `ExportableFileAttachment.fileContentBase64` when the attachment is stored inside the bundle and readable at export time; legacy inaccessible attachments export with `fileContentBase64 = nil`
+- On import, base64 content is decoded and written to `bundle/projects/<uuid>/attachments/`; the attachment is immediately accessible
 
 **UI Integration Points:**
 - Export: Action menu in `ProjectDetailView` with `NSSavePanel` for file selection
@@ -638,18 +748,23 @@ final class FileAttachment: PersistentModel {
     var originalFileName: String          // Original file name when attached
     var fileExtension: String?            // File extension (e.g., "txt", "md")
     var fileSizeBytes: Int64              // File size in bytes
-    var securityScopedBookmarkData: Data? // Security-scoped bookmark for sandbox access
+    var securityScopedBookmarkData: Data? // Legacy: security-scoped bookmark (kept for migration; nil on new attachments)
+    var relativeBundlePath: String?       // Path relative to bundle root, e.g. "projects/<uuid>/attachments/report.md"
+    var isAccessible: Bool                // Whether the file is currently accessible
     var createdAt: Date
     var modifiedAt: Date
 
     // Inverse relationship to project
     var project: ContentProject?
 
-    init(originalFileName: String, fileExtension: String?, fileSizeBytes: Int64) {
+    init(originalFileName: String, fileSizeBytes: Int64) {
         self.id = UUID()
         self.originalFileName = originalFileName
-        self.fileExtension = fileExtension
+        self.fileExtension = URL(fileURLWithPath: originalFileName).pathExtension.lowercased()
         self.fileSizeBytes = fileSizeBytes
+        self.securityScopedBookmarkData = nil
+        self.relativeBundlePath = nil
+        self.isAccessible = true
         self.createdAt = Date()
         self.modifiedAt = Date()
     }
@@ -936,6 +1051,6 @@ nonisolated func batchUpdateProjects(_ updates: [ProjectUpdate]) async throws {
 
 ---
 
-**Last Updated**: 2026-03-03
+**Last Updated**: 2026-03-17 (updated: FileSelectionResult, replaceAttachment, and duplicate confirmation queue pattern added to File Attachment Service)
 **Swift Version**: 6.2.3 (Xcode toolchain), language version 6.2, with Default MainActor Isolation
 **Important:** This document provides implementation guidance only. Actual code should be generated and compiled to ensure correctness. Update this document as architectural decisions are made during development.

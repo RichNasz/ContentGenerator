@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- [ContentGenerator] Fill spec completeness gaps for duplicate attachment replacement: add exact dialog title/message/button-label copy, full replaceAttachment(_:withFileAt:) signature and execution sequence, FileAttachmentSection @State property inventory, FileSelectionResult tuple field semantics, and selectAndAttachFiles catch-behaviour notes
+
 ### Deprecated
 
 ### Removed

@@ -113,8 +113,16 @@
 - **Context Inclusion:** Attached file contents automatically included in generation prompts
 - **File Management:** View, remove, and re-attach files as needed
 - **Open in Default Application:** Attached files can be opened in their default application
-- **Persistent File Access:** File access is maintained across application sessions despite sandboxing
-- **Accessibility Requirement:** Inaccessible files cannot be selected for content generation; users must first re-link them using the "Locate" button
+- **Bundle Storage:** When a file is attached, it is copied into the `.cgspecs` bundle at `projects/<uuid>/attachments/<filename>`. The bundle's single security-scoped bookmark covers all files inside, eliminating the need for per-file bookmarks. When an attachment is removed, its copy inside the bundle is also deleted automatically
+- **Duplicate File Handling:** If the user tries to attach a file whose name already matches an existing attachment — via either the file picker or drag-and-drop — a confirmation dialog is presented with:
+  - Title: `Replace "<filename>"?`
+  - Message: "A file named "<filename>" is already attached to this project. Do you want to replace it with the selected file? This cannot be undone."
+  - Button "Replace" (destructive): overwrites the bundle copy with the new file and updates the existing attachment record in-place (same UUID, updated file size and timestamp). No error is shown on success.
+  - Button "Keep Existing" (cancel): dismisses the dialog with no change and no error shown.
+  - If the replace operation fails, an error alert is shown with the failure detail. The replacement queue still advances to the next pending duplicate after the error is acknowledged.
+  - Multiple simultaneous duplicates (e.g. multi-file picker with two conflicting names) are queued and each dialog is shown in sequence; both Replace and Keep Existing advance to the next item.
+- **Persistent File Access:** File access is maintained across application sessions because the file lives inside the bundle, which the app already holds access to
+- **Accessibility Requirement:** Inaccessible files (e.g., those from pre-bundle-storage attachments that were never re-linked) cannot be selected for content generation; users must first re-link them using the "Locate" button, which copies the selected file into the bundle
 
 ### 4. Text Editing Features
 - **Spell Checking:** Text editors and text fields provide macOS-native spell checking and grammar checking
@@ -188,14 +196,14 @@
 - **Export Contents:** Exports include project metadata, specification sections, system prompts, and LLM connection references
 - **Multiple LLM Connections:** Projects can reference multiple LLM connections (project-level for content generation, section-level for assistants); all unique connections are exported as a deduplicated array
 - **Generated Content Not Exported:** Generated content is excluded; users regenerate content after import
-- **File Attachment Metadata:** File paths are captured for reference, but actual file contents are not embedded
+- **File Attachment Contents:** Because attachments are stored inside the bundle, their contents are readable at export time and are embedded in the JSON as base64-encoded data. This allows attachments to be fully restored on import without requiring manual re-linking
 - **Security:** API keys are never included in exports for security reasons
 - **Schema Versioning:** Exports include a schema version for forward compatibility
 
 #### Project Import
 - **JSON Import:** Projects can be imported from previously exported JSON files
 - **New Project Creation:** Imported projects are created as new entries (new UUIDs generated)
-- **File Re-attachment Required:** Users must manually re-attach files after import (paths are informational only)
+- **Attachment Restoration:** If the export contained embedded file contents (base64), files are written into the new bundle's `projects/<uuid>/attachments/` directory and are immediately accessible — no "Locate" step required. Attachments from legacy exports (no embedded content) are marked inaccessible and require the "Locate" button to re-link
 - **LLM Connection Handling:** Imported LLM configurations are matched against existing connections or created as new
 - **Content Regeneration Required:** Users must regenerate content after import as generated content is not exported
 
@@ -219,10 +227,10 @@ When importing a project with LLM configurations:
 #### File Attachment Import
 When importing a project with file attachments:
 - **Metadata Preserved:** Original filename, file size, extension, and timestamps are imported
-- **Inaccessible by Default:** Imported attachments are marked as inaccessible (no security bookmark)
-- **Visual Indication:** Inaccessible files show warning icon and "Locate" button instead of "Open"
-- **Locate to Re-link:** Users can use the "Locate" button to browse for the file and re-establish access
-- **File Validation:** When re-linking, the file must match supported types (txt, md, rtf) and size limits
+- **Content Restored:** If the exported JSON includes embedded file contents (base64), files are written into the destination bundle automatically and are immediately accessible
+- **Inaccessible When No Content:** Attachments from legacy exports (no embedded content) are marked inaccessible; they show a warning icon and "Locate" button instead of "Open"
+- **Locate to Re-link:** For inaccessible attachments, users can use the "Locate" button to browse for the file, which copies it into the bundle and re-establishes access
+- **File Validation:** When re-linking via "Locate", the file must match supported types (txt, md, rtf) and size limits
 
 ## User Experience Requirements
 
@@ -306,3 +314,5 @@ When importing a project with file attachments:
 ---
 
 **Note:** This specification will be updated as functionality is developed. Each new feature should be documented here in language-agnostic terms focusing on WHAT the feature does, not HOW it's implemented.
+
+**Last Updated:** 2026-03-17
