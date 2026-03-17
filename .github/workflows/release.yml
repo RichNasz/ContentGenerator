@@ -1,0 +1,58 @@
+name: Release
+
+# Required: macOS 26.3, Xcode 26.3, Swift 6.2
+# Triggered by version tags (e.g. v2.0, v2.1.0).
+# Uses ExportOptions.plist (mac-application / no signing) — no signing secrets required.
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-distribution:
+    name: Build Distribution
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build distribution package
+        run: |
+          chmod +x ContentGenerator/Scripts/build_for_distribution.sh
+          ContentGenerator/Scripts/build_for_distribution.sh
+
+      - name: Upload distribution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: distribution-${{ github.ref_name }}
+          path: ContentGenerator/dist/
+          if-no-files-found: error
+
+      - name: Extract changelog entry for release notes
+        id: changelog
+        run: |
+          # Extract content between the first two versioned headings (skipping [Unreleased])
+          notes=$(awk '
+            /^## \[[0-9]/ && !found { found=1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md | sed '/^$/N;/^\n$/d')
+
+          # Use a delimiter to safely pass multiline output
+          echo "notes<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$notes" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ContentGenerator ${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.notes }}
+          files: |
+            ContentGenerator/dist/ZIP/*.zip
+            ContentGenerator/dist/DMG/*.dmg
+            ContentGenerator/dist/Checksums/*.txt

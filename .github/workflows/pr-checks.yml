@@ -1,0 +1,55 @@
+name: PR Checks
+
+# Required: macOS 26.3, Xcode 26.3, Swift 6.2
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  conventional-commit-title:
+    name: Conventional Commit Title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Allowed types from ContributingSpec.md
+          types: |
+            feat
+            fix
+            spec
+            refactor
+            docs
+            chore
+
+  changelog-check:
+    name: Changelog Updated
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check for content under [Unreleased]
+        run: |
+          # Extract lines between "## [Unreleased]" and the next "## [" heading
+          unreleased_content=$(awk '
+            /^## \[Unreleased\]/ { in_section=1; next }
+            in_section && /^## \[/ { exit }
+            in_section { print }
+          ' CHANGELOG.md | grep -v '^\s*$' | grep -v '^###' || true)
+
+          if [ -z "$unreleased_content" ]; then
+            echo "ERROR: The ## [Unreleased] section in CHANGELOG.md has no content."
+            echo "Please add an entry describing what changed in this PR."
+            exit 1
+          fi
+
+          echo "Changelog check passed. Unreleased entries found:"
+          echo "$unreleased_content"

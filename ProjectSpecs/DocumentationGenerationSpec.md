@@ -58,6 +58,7 @@ A single line of shields.io badges:
 - Swift 6.2 (orange)
 - Xcode 26.3+ (blue)
 - License: MIT (green)
+- CI (GitHub Actions workflow status badge for the `CI` workflow on the `main` branch)
 
 ### 2. Project Title and Tagline
 The project name as H1, followed by the tagline from ProjectOverviewSpec.

@@ -1,0 +1,69 @@
+name: CI
+
+# Required: macOS 26.3, Xcode 26.3, Swift 6.2
+# Note: Jobs use macos-latest; update runner tag if a specific Xcode version is needed.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  spm-packages:
+    name: SPM Packages (LLMmanagement + ProjectExchange)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build LLMmanagement
+        working-directory: LLMmanagement
+        run: swift build
+
+      - name: Test LLMmanagement
+        working-directory: LLMmanagement
+        run: swift test
+
+      - name: Build ProjectExchange
+        working-directory: ProjectExchange
+        run: swift build
+
+      - name: Test ProjectExchange
+        working-directory: ProjectExchange
+        run: swift test
+
+  xcode-app:
+    name: Xcode App (ContentGenerator)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Derived Data
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: derived-data-${{ hashFiles('ContentGenerator/ContentGenerator.xcodeproj/project.pbxproj') }}
+          restore-keys: derived-data-
+
+      - name: Build
+        run: |
+          xcodebuild build \
+            -project ContentGenerator/ContentGenerator.xcodeproj \
+            -scheme ContentGenerator \
+            -destination 'platform=macOS' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Test
+        run: |
+          xcodebuild test \
+            -project ContentGenerator/ContentGenerator.xcodeproj \
+            -scheme ContentGenerator \
+            -destination 'platform=macOS' \
+            -skip-testing:ContentGeneratorUITests \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
