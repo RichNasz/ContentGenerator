@@ -1,5 +1,5 @@
 {
-  "originHash" : "f7520d99d67ea72bb0fd58d63058a0c183cc0476f51b157268542f496050bfcc",
+  "originHash" : "5dffd7f934ebbc260e6ccfbc134b3aa25e875541a925d0dce1fd2845849db83e",
   "pins" : [
     {
       "identity" : "swift-syntax",
@@ -16,7 +16,7 @@
       "location" : "https://github.com/RichNasz/SwiftChatCompletionsDSL",
       "state" : {
         "branch" : "main",
-        "revision" : "20b75e0911c85051ff3786a3dfc7600d253bdaca"
+        "revision" : "ed6c4fa0159b007bb7a1edd694f6eacfe8b46785"
       }
     },
     {

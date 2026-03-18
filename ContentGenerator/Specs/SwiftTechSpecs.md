@@ -517,6 +517,71 @@ The application uses dedicated windows for content generation workflows, separat
 - Use `@Environment(\.openWindow)` to launch generation windows
 - Window scenes registered in app definition with appropriate identifiers
 
+### Agent Generation Window Pattern (ChatCompletionsAgentGen Package)
+
+The `ChatCompletionsAgentGen` local Swift package (at `ChatCompletionsAgentGen/`) provides the agent-based generation window. It is macOS-only; all views are guarded with `#if os(macOS)`.
+
+#### Thinking Model Response Handling
+
+Thinking models embed chain-of-thought reasoning inside `<think>…</think>` tags. The package strips these before displaying or returning content.
+
+**`ThinkingParseResult`** (`Utilities/String+ThinkingBlocks.swift`) — platform-agnostic, `import Foundation` required:
+```swift
+struct ThinkingParseResult: Sendable {
+    let content: String         // text outside <think> blocks, whitespace-trimmed and joined
+    let thinkingBlocks: [String] // text from each block, in document order
+}
+
+extension String {
+    func extractingThinkingBlocks() -> ThinkingParseResult { /* ... */ }
+}
+```
+- Tag matching is case-insensitive (`<THINK>` is treated the same as `<think>`)
+- An unclosed `<think>` tag is treated as a complete block (the remaining text is captured)
+- If no thinking tags are present the result is `ThinkingParseResult(content: self.trimmed, thinkingBlocks: [])`
+
+**`ThinkingBlockView`** (`Views/ThinkingBlockView.swift`) — `#if os(macOS)`, follows `AgentToolCallLogView` visual conventions (`.regularMaterial` background, `Color.secondary.opacity(0.08)` content boxes, caption fonts):
+```swift
+struct ThinkingBlockView: View {
+    let blocks: [String]
+    // Collapsed by default; header shows block count + word count summary
+    // Each block rendered in a ScrollView capped at 200pt height, .textSelection(.enabled)
+}
+```
+
+**`ProjectAgentGenerationWindow` integration** — new `@State` properties added alongside existing ones:
+```swift
+@State private var thinkingBlocks: [String] = []
+@State private var hasThinkingContent: Bool = false
+```
+
+Reset on each `runAgent()` call (alongside `generatedContent = ""` and `toolCallLog = []`).
+
+Success path in `runAgent()` — after `rawContent` is available, parse before storing:
+```swift
+let parsed = rawContent.extractingThinkingBlocks()
+thinkingBlocks = parsed.thinkingBlocks
+hasThinkingContent = !parsed.thinkingBlocks.isEmpty
+let finalContent = parsed.content.isEmpty && !parsed.thinkingBlocks.isEmpty
+    ? "[Model produced only reasoning content with no final output. See the Thinking Process panel above.]"
+    : parsed.content
+generatedContent = finalContent
+// onContentGenerated(generatedContent) receives the stripped content — intentional
+```
+
+`generatedContentColumn` conditionally inserts `ThinkingBlockView` between the column headline and the content `ScrollView`:
+```swift
+if hasThinkingContent {
+    ThinkingBlockView(blocks: thinkingBlocks)
+        .padding(.horizontal)
+}
+```
+
+**Key constraints:**
+- `ThinkingParseResult` must be `Sendable` — it crosses the async `Task {}` boundary inside `runAgent()`
+- No `@MainActor` annotation needed on `ThinkingBlockView` — default MainActor isolation applies
+- No `@Query` anywhere in the package — use manual `modelContext.fetch(FetchDescriptor<T>(...))` (see ERR-SWIFTDATA-001)
+
 ### LLM Integration Patterns
 
 #### OpenAI Endpoint Type
@@ -1073,6 +1138,6 @@ nonisolated func batchUpdateProjects(_ updates: [ProjectUpdate]) async throws {
 
 ---
 
-**Last Updated**: 2026-03-17 (updated: project deletion bundle directory cleanup pattern added)
+**Last Updated**: 2026-03-17 (updated: ChatCompletionsAgentGen agent generation + thinking model response handling patterns added)
 **Swift Version**: 6.2.3 (Xcode toolchain), language version 6.2, with Default MainActor Isolation
 **Important:** This document provides implementation guidance only. Actual code should be generated and compiled to ensure correctness. Update this document as architectural decisions are made during development.

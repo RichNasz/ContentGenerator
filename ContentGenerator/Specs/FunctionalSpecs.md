@@ -75,6 +75,17 @@
 - **Cancellation Support:** Users can cancel in-progress generation at any time
 - **Error Recovery:** Graceful handling of generation failures with user-friendly error messages
 
+#### Agent-Based Content Generation
+- **Agent Generation Window:** A dedicated window (`ProjectAgentGenerationWindow`) that uses an autonomous agent (tool-calling LLM) to inspect specification sections before writing final content
+- **Tool Call Log:** All tool calls made by the agent during a session are surfaced in the controls column as a collapsible, scrollable log
+- **Thinking Model Support:** Some LLM models (DeepSeek R1, QwQ, and others) embed chain-of-thought reasoning inside `<think>…</think>` XML tags in their responses
+  - Thinking content is stripped from the generated output before it is displayed, saved, or copied — callers receive only the final content
+  - If thinking blocks are present, a collapsible "Thinking Process" panel appears above the generated content, collapsed by default
+  - The panel header shows a summary (number of blocks and approximate word count); expanding it reveals each block in a scrollable, selectable text area
+  - If the model returns only thinking content and no final text, a descriptive placeholder is shown in the content area directing the user to the Thinking Process panel
+  - Multiple `<think>` blocks (e.g., interleaved with streaming text) are collected and displayed in order
+  - An unclosed `<think>` tag (model stopped mid-reasoning) is treated as a complete thinking block
+
 #### Content Generation Modes
 - **Replace Mode:** New generation replaces existing section content entirely
 - **Append Mode:** New generation appends to existing section content
@@ -316,4 +327,4 @@ When importing a project with file attachments:
 
 **Note:** This specification will be updated as functionality is developed. Each new feature should be documented here in language-agnostic terms focusing on WHAT the feature does, not HOW it's implemented.
 
-**Last Updated:** 2026-03-17 (updated: project deletion now cleans up bundle directory on disk)
+**Last Updated:** 2026-03-17 (updated: agent generation + thinking model response handling added)

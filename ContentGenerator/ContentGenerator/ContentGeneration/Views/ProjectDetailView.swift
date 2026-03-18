@@ -14,6 +14,7 @@ import Foundation
 import LLMmanagement
 import UniformTypeIdentifiers
 import ProjectExchange
+import ChatCompletionsAgentGen
 
 /// Comprehensive project editing interface for the NavigationSplitView detail section
 struct ProjectDetailView: View {
@@ -23,6 +24,7 @@ struct ProjectDetailView: View {
     @Environment(ProjectExportService.self) private var exportService
     @Environment(ContentGenerationWindowState.self) private var windowState
     @Environment(ProjectContentGenerationWindowState.self) private var projectWindowState
+    @Environment(AgentGenerationWindowState.self) private var agentWindowState
     @Environment(\.openWindow) private var openWindow
 
     // Query for available LLM connections
@@ -392,6 +394,12 @@ struct ProjectDetailView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(specificationSections.isEmpty)
 
+                Button("Generate with Agent") {
+                    generateContentWithAgent()
+                }
+                .buttonStyle(.bordered)
+                .disabled(specificationSections.isEmpty)
+
                 Menu {
                     Button("Export Markdown File", systemImage: "doc.text") {
                         exportProjectMarkdown()
@@ -501,6 +509,35 @@ struct ProjectDetailView: View {
     }
 
 
+
+    /// Opens the project agent generation window
+    private func generateContentWithAgent() {
+        let agentSections = specificationSections.map { section in
+            AgentSection(
+                name: section.name,
+                content: section.content,
+                contentGenerationPrompt: section.contentGenerationPrompt,
+                contentUsagePrompt: section.contentUsagePrompt,
+                isEnabled: section.isEnabled
+            )
+        }
+
+        agentWindowState.openAgentWindow(
+            projectName: project.name,
+            systemPrompt: project.systemPrompt,
+            llmConnectionId: project.llmConnectionId,
+            sections: agentSections,
+            onContentGenerated: { content in
+                print("Agent content generated: \(content.prefix(100))…")
+            },
+            onLLMSelectionChanged: { llmId in
+                project.llmConnectionId = llmId
+                scheduleSave()
+            }
+        )
+
+        openWindow(id: "project-agent-generation")
+    }
 
     /// Exports the project as a markdown file
     private func exportProjectMarkdown() {

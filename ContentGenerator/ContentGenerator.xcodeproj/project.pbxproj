@@ -17,6 +17,7 @@
 		426193332EABF75500B53F04 /* SwiftChatCompletionsDSL in Frameworks */ = {isa = PBXBuildFile; productRef = 426193322EABF75500B53F04 /* SwiftChatCompletionsDSL */; };
 		42A85C2F2F57915700833656 /* SwiftChatCompletionsMacros in Frameworks */ = {isa = PBXBuildFile; productRef = 42A85C2E2F57915700833656 /* SwiftChatCompletionsMacros */; };
 		42A85C322F5791D300833656 /* SwiftChatCompletionsDSL in Frameworks */ = {isa = PBXBuildFile; productRef = 42A85C312F5791D300833656 /* SwiftChatCompletionsDSL */; };
+		42D7DAC32F69D3E300712BE5 /* ChatCompletionsAgentGen in Frameworks */ = {isa = PBXBuildFile; productRef = 42D7DAC22F69D3E300712BE5 /* ChatCompletionsAgentGen */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -77,6 +78,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4260FEE02F0C1AC900BB567F /* ProjectExchange in Frameworks */,
+				42D7DAC32F69D3E300712BE5 /* ChatCompletionsAgentGen in Frameworks */,
 				42A85C2F2F57915700833656 /* SwiftChatCompletionsMacros in Frameworks */,
 				426193332EABF75500B53F04 /* SwiftChatCompletionsDSL in Frameworks */,
 				42A85C322F5791D300833656 /* SwiftChatCompletionsDSL in Frameworks */,
@@ -162,6 +164,7 @@
 				4260FEDF2F0C1AC900BB567F /* ProjectExchange */,
 				42A85C2E2F57915700833656 /* SwiftChatCompletionsMacros */,
 				42A85C312F5791D300833656 /* SwiftChatCompletionsDSL */,
+				42D7DAC22F69D3E300712BE5 /* ChatCompletionsAgentGen */,
 			);
 			productName = ContentGenerator;
 			productReference = 426192F52EABBF4200B53F04 /* ContentGenerator.app */;
@@ -250,6 +253,7 @@
 				4260FEDE2F0C1AC900BB567F /* XCLocalSwiftPackageReference "../ProjectExchange" */,
 				42A85C2D2F57915700833656 /* XCRemoteSwiftPackageReference "SwiftChatCompletionsMacros" */,
 				42A85C302F5791D300833656 /* XCRemoteSwiftPackageReference "SwiftChatCompletionsDSL" */,
+				42D7DAC12F69D3E300712BE5 /* XCLocalSwiftPackageReference "../ChatCompletionsAgentGen" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 426192F62EABBF4200B53F04 /* Products */;
@@ -736,6 +740,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../LLMmanagement;
 		};
+		42D7DAC12F69D3E300712BE5 /* XCLocalSwiftPackageReference "../ChatCompletionsAgentGen" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../ChatCompletionsAgentGen;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -779,6 +787,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 42A85C302F5791D300833656 /* XCRemoteSwiftPackageReference "SwiftChatCompletionsDSL" */;
 			productName = SwiftChatCompletionsDSL;
+		};
+		42D7DAC22F69D3E300712BE5 /* ChatCompletionsAgentGen */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ChatCompletionsAgentGen;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
