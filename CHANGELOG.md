@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- [ChatCompletionsAgentGen] Add get_unread_sections_tool and SectionReadTracker actor to enforce harness-side section completeness, guaranteeing the agent reads all enabled sections before writing its response
 - [Project] Add GitHub Actions workflows for CI (SPM package builds/tests + Xcode app build/test), PR validation (conventional commit title check + changelog presence check), and tag-triggered release builds with artifact upload and GitHub Release creation
 - [Project] Document .claude/ AI tooling structure in ProjectOverviewSpec, listing all 13 workflow skills and noting sub-project settings.local.json files are gitignored and skill-free
 
