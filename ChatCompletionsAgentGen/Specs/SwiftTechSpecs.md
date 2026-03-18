@@ -52,18 +52,18 @@ public actor SectionReadTracker {
     func unreadSections(from sections: [AgentSection]) -> [AgentSection]
 }
 ```
-- Plain `public actor` — no `@ChatCompletionsTool` macro (it is infrastructure, not a tool)
+- Plain `public actor` — no `@LLMTool` macro (it is infrastructure, not a tool)
 - `public` access required because `makeAgentTools()` is `public` and takes it as a parameter
 - `markRead` and `unreadSections` are `internal` — only called from within the package
 - Freshly allocated per `runAgent()` call so prior session reads do not bleed into subsequent runs
 - Actor isolation makes it safely `Sendable` for capture in `@Sendable` tool handler closures
 
 ### ProjectSpecTools (Models/ProjectSpecTools.swift)
-- Four `@ChatCompletionsTool`-decorated structs: `ListSectionsTool`, `ReadSectionTool`, `GetUnreadSectionsTool`, `ReadSystemPromptTool`
+- Four `@LLMTool`-decorated structs: `ListSectionsTool`, `ReadSectionTool`, `GetUnreadSectionsTool`, `ReadSystemPromptTool`
 - `ReadSectionTool` holds `let tracker: SectionReadTracker`; calls `await tracker.markRead(section.name)` on the **matched section's actual name** (not `arguments.sectionName`) before returning, to handle any case discrepancy between the model's argument and the stored name
 - `GetUnreadSectionsTool` holds `let sections: [AgentSection]` and `let tracker: SectionReadTracker`; returns JSON array of unread enabled section names, or `"[]"` when all have been read
 - Factory: `public func makeAgentTools(sections: [AgentSection], systemPrompt: String?, tracker: SectionReadTracker) -> [AgentTool]`
-- `NoArguments` and `ReadSectionArguments` decorated with `@ChatCompletionsToolArguments`
+- `NoArguments` and `ReadSectionArguments` decorated with `@LLMToolArguments`
 
 ### ProjectAgentGenerationWindow (Views/ProjectAgentGenerationWindow.swift)
 - Wrapped in `#if os(macOS)`
@@ -77,8 +77,10 @@ public actor SectionReadTracker {
   - `.modelResponse(_, _, iteration)` → sets `liveStatus = "Thinking (iteration N)…"`
   - `.toolStarted(name, _)` → sets `activeToolName = name`, `liveStatus = "Calling \(name)…"`
   - `.toolCompleted(name, _, _)` → clears `activeToolName`, sets `liveStatus = "Tool \(name) finished. Waiting for model…"`
-  - `.completed(result)` → clears `activeToolName`/`liveStatus`, populates `toolCallLog = result.log`, processes `result.response` for thinking blocks and final content
+  - `.completed(result)` → clears `activeToolName`/`liveStatus`, populates `toolCallLog = result.log`, processes `result.response` for thinking blocks and final content; extracts `result.response.usage` → if non-nil, formats as `"Prompt: N | Completion: N | Total: N tokens"` → sets `tokenUsageSummary`; if nil, sets `tokenUsageSummary = "Token usage unavailable"`
 - **Live state variables**: `@State private var liveStatus: String` and `@State private var activeToolName: String?` are reset to empty/nil at the top of `runAgent()` alongside the other reset properties. Both are also cleared in both `catch` blocks.
+- **Token usage state**: `@State private var tokenUsageSummary: String = ""` — populated on `.completed` event from `result.response.usage`. Displayed as a `Text` view below the tool call log in Column 2, styled `.font(.caption)` `.foregroundStyle(.secondary)`. Only visible when non-empty (i.e., after agent completes). Reset to `""` at the top of `runAgent()`.
+- **DSL gap — per-iteration usage**: `ToolSessionEvent.modelResponse` does not currently carry `ChatResponse.Usage`. When the DSL adds this, accumulate per-iteration totals in `@State private var cumulativeTokens: (prompt: Int, completion: Int, total: Int)` and update `liveStatus` to include the running token count.
 - **`ToolCallLogEntry` constraint**: Has no public memberwise init — `activeToolName` is a separate `String?` state variable. The authoritative `toolCallLog: [ToolCallLogEntry]` is only populated from `result.log` on the `.completed` event; never constructed manually.
 - **`contentDisplayState` computed property**: Returns `(text: String, isPlaceholder: Bool)`. Used inside the Column 3 `ScrollView` body via `let state = contentDisplayState`. This pattern is required because uninitialized `let` + conditional assignment inside a `@ViewBuilder` closure produces `Void` expressions that break the ViewBuilder — see ERR-COMPILE-003.
 - **Timeout configuration**: Uses the `configParams:` overload (NOT the `@ChatConfigBuilder` trailing-closure overload) to pass `RequestTimeout` and `ResourceTimeout` derived from `llmConnection.requestTimeoutSeconds`. Clamping: `RequestTimeout` clamps to 10–900s, `ResourceTimeout` clamps to 30–3600s. The `[ChatConfigParameter]` array is pre-computed on MainActor before the `await` — see ERR-COMPILE-002.
@@ -97,8 +99,8 @@ public actor SectionReadTracker {
 
 ## Dependencies
 - `SwiftChatCompletionsDSL`: `ToolSession`, `AgentTool`, `TextMessage`, `LLMClient`, `ToolCallLogEntry`, `ToolSessionEvent`
-- `SwiftChatCompletionsMacros`: `@ChatCompletionsTool`, `@ChatCompletionsToolArguments`, `@ChatCompletionsToolGuide`
+- `SwiftLLMToolMacros`: `@LLMTool`, `@LLMToolArguments`, `@LLMToolGuide`
 - `LLMmanagement`: `LLMConnection`, `LLMClient`
 
 ---
-**Last Updated:** 2026-03-17 (get_unread_sections_tool: SectionReadTracker actor, GetUnreadSectionsTool, tracker field on ReadSectionTool, makeAgentTools tracker parameter, buildSystemPrompt loop-until-[] pattern)
+**Last Updated:** 2026-03-18 (token usage display: tokenUsageSummary state, .completed handler extraction, DSL gap note for per-iteration usage)

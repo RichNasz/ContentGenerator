@@ -32,6 +32,12 @@
 - **While running**: An in-progress spinner row appears for the tool currently executing, showing the tool name and a "running…" label. It disappears and is replaced by a completed row (with duration) once the tool finishes.
 - **After agent completes**: Log shows all tool calls with: tool name, arguments (truncated, expandable), result preview (truncated), duration in milliseconds
 
+### Token Usage Display
+- **During generation**: Live status text should include token usage when available from the DSL. Currently only the final API response provides usage data; a future DSL enhancement (adding `ChatResponse.Usage` to `ToolSessionEvent.modelResponse`) will enable per-iteration token counts.
+- **On completion**: Always display a token usage summary showing prompt tokens, completion tokens, and total tokens from the final API response
+- **Location**: Token usage summary displayed in Column 2 below the tool call log, visible after the agent completes
+- **Empty state**: If the API response does not include usage data (some providers omit it), show "Token usage unavailable"
+
 ### Generated Content Actions
 - Copy to Clipboard
 - Save to File (as `.md`)
@@ -42,4 +48,4 @@
 - `AgentGenerationWindowState`: Observable class coordinating window data, populated by the app before opening the window
 
 ---
-**Last Updated:** 2026-03-17 (get_unread_sections_tool: harness-side section completeness enforcement via SectionReadTracker)
+**Last Updated:** 2026-03-18 (token usage display: completion summary and future per-iteration tracking)
