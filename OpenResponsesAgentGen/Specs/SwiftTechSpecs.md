@@ -73,14 +73,18 @@ public actor SectionReadTracker {
   - `.toolCallCompleted(callId:name:output:duration:)` → clears `activeToolName`, builds `LocalToolCallLogEntry`, appends to `toolCallLog`
   - `.llm(.contentPartDelta(delta:_:_:))` → appends delta text to `generatedContent` for live streaming
   - `.llm(.responseCompleted(response))` → no longer used for usage extraction (handled by `.usageUpdate`)
-  - `.usageUpdate(usage, iteration)` → accumulates `cumulativeInput` / `cumulativeOutput`, appends to `iterationUsages` array, updates `tokenUsageSummary` and `liveStatus` with running totals
+  - `.usageUpdate(usage, iteration)` → accumulates `cumulativeInput` / `cumulativeOutput`; also reads `usage.outputTokensDetails?.reasoningTokens` into `cumulativeReasoning` and `usage.inputTokensDetails?.cachedTokens` into `cumulativeCached`; appends to `iterationUsages`; rebuilds `tokenUsageSummary` with conditional cached/reasoning segments
+  - `.llm(.outputItemDone(item, _))` → for `.reasoning(reasoningItem)`: appends `reasoningItem.contentText` (when non-nil/non-empty) to `thinkingBlocks` and sets `hasThinkingContent = true`; additionally appends each `reasoningItem.summary[n].text` to `thinkingSummaries`
 - **Live status state**: `@State private var liveStatus: String` and `@State private var activeToolName: String?` provide real-time UI feedback; `@State private var pendingToolArgs: [String: String]` caches arguments from `toolCallStarted` for use in `toolCallCompleted`
+- **Reasoning effort state**: `@State private var selectedReasoningEffort: ReasoningEffort? = .medium` — drives the Column 2 picker; `nil` means no `Reasoning` config param is sent
+- **Detailed token counters**: `@State private var cumulativeReasoning: Int` and `@State private var cumulativeCached: Int` track cumulative reasoning output tokens and cached input tokens across iterations, reset to 0 at the start of each `runAgent()` call
 - **Section read count tracking**: `@State private var sectionReadCounts: [String: Int]` tracks per-section read counts for Column 1 badges. Incremented in the `.toolCallCompleted` handler when `name == "read_section_tool"` by parsing the `section_name` key from the JSON arguments string via `JSONSerialization`. Reset to `[:]` at the start of each `runAgent()` call.
-- **Post-stream processing**: Thinking block extraction via `extractingThinkingBlocks()` runs after the stream finishes (when full text is accumulated), not during streaming
+- **Post-stream processing**: After the stream finishes, `generatedContent.extractingThinkingBlocks()` extracts `<think>` tag blocks, which are **appended** (not replaced) to `thinkingBlocks` so that structured reasoning collected via `ReasoningItem.contentText` during the stream is preserved alongside any tag-based blocks
 - **Input items**: Uses `System(buildSystemPrompt())` and `User(userMessage)` convenience functions returning `InputItem`
-- **Token usage**: Cumulative tracking via local `cumulativeInput`, `cumulativeOutput` (Int accumulators) and `iterationUsages: [(iteration: Int, usage: ResponseObject.Usage)]` array, accumulated from `.usageUpdate` events. Final summary format: `"Input: N | Output: N | Total: N tokens (M iterations)"`
+- **Token usage**: Cumulative tracking via local `cumulativeInput`, `cumulativeOutput` (Int accumulators) and `@State` vars `cumulativeReasoning`, `cumulativeCached`, plus `iterationUsages: [(iteration: Int, usage: ResponseObject.Usage)]`, all accumulated from `.usageUpdate` events. Live summary format: `"Tokens — Input: N (C cached) | Reasoning: R | Output: N | Total: N"` (cached and reasoning segments omitted when zero). Final summary format: `"Input: N | Output: N | Total: N tokens (M iterations)"`
 - **Tracker lifecycle**: `let tracker = SectionReadTracker()` is created at the top of `runAgent()`, before `makeAgentTools()`. A fresh tracker per run ensures prior session reads do not bleed.
 - **Timeout configuration**: Uses the `configParams:` overload to pass `RequestTimeout` and `ResourceTimeout` derived from `llmConnection.requestTimeoutSeconds`. Pre-computed array on MainActor before the `await`.
+- **Reasoning config param**: `configParams` is built as `var [ResponseConfigParameter]`. After the fixed entries, `if let effort = selectedReasoningEffort { configParams.append(Reasoning(effort: effort, summary: .auto)) }` conditionally adds the reasoning parameter. When `selectedReasoningEffort` is `nil` (None picker option), no `Reasoning` param is appended.
 
 ### LocalToolCallLogEntry (Views/AgentToolCallLogView.swift)
 - Local struct with `name`, `arguments`, `result`, `duration` fields — mirrors `SwiftOpenResponsesDSL.ToolCallLogEntry` but has a public init (the upstream type's synthesized memberwise init is `internal`)
@@ -96,7 +100,7 @@ public actor SectionReadTracker {
 - No GCD, no DispatchQueue
 
 ## Dependencies
-- `SwiftOpenResponsesDSL`: `ToolSession`, `ToolSessionEvent`, `StreamEvent`, `AgentTool`, `FunctionToolParam`, `InputItem`, `LLMClient`, `ResponseObject`, `ResponseConfigParameter`
+- `SwiftOpenResponsesDSL`: `ToolSession`, `ToolSessionEvent`, `StreamEvent`, `AgentTool`, `FunctionToolParam`, `InputItem`, `LLMClient`, `ResponseObject`, `ResponseConfigParameter`, `Reasoning`, `ReasoningEffort`
 - `SwiftLLMToolMacros`: `@LLMTool`, `@LLMToolArguments`, `@LLMToolGuide`
 - `LLMmanagement`: `LLMConnection`, `LLMClient`
 
@@ -112,4 +116,4 @@ public actor SectionReadTracker {
 | `ToolSessionStreamEvent` (`.modelResponse`, `.toolStarted`, `.toolCompleted`, `.completed`) | `ToolSessionEvent` (`.iterationStarted`, `.toolCallStarted`, `.toolCallCompleted`, `.llm(StreamEvent)`) | Different event shapes; Responses wraps raw `StreamEvent` in `.llm()`, no `.completed` case |
 
 ---
-**Last Updated:** 2026-03-19
+**Last Updated:** 2026-03-19 (reasoning effort picker, ReasoningItem.contentText capture, detailed token breakdown, Reasoning/ReasoningEffort DSL types)

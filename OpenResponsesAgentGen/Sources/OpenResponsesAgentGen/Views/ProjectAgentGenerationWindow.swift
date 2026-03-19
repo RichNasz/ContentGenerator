@@ -47,6 +47,10 @@ public struct ProjectAgentGenerationWindow: View {
     @State private var activeToolName: String? = nil
     @State private var pendingToolArgs: [String: String] = [:]
     @State private var sectionReadCounts: [String: Int] = [:]
+    @State private var thinkingSummaries: [String] = []
+    @State private var selectedReasoningEffort: ReasoningEffort? = .medium
+    @State private var cumulativeReasoning: Int = 0
+    @State private var cumulativeCached: Int = 0
 
     public init(
         projectName: String,
@@ -191,6 +195,23 @@ public struct ProjectAgentGenerationWindow: View {
             }
             .padding(.horizontal)
 
+            // Reasoning Effort Picker
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Reasoning Effort")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Picker("Reasoning Effort", selection: $selectedReasoningEffort) {
+                    Text("None").tag(Optional<ReasoningEffort>.none)
+                    Text("Low").tag(Optional<ReasoningEffort>.some(.low))
+                    Text("Medium").tag(Optional<ReasoningEffort>.some(.medium))
+                    Text("High").tag(Optional<ReasoningEffort>.some(.high))
+                    Text("xHigh").tag(Optional<ReasoningEffort>.some(.xhigh))
+                }
+                .pickerStyle(.menu)
+                .disabled(isRunning)
+            }
+            .padding(.horizontal)
+
             // Instructions
             VStack(alignment: .leading, spacing: 4) {
                 Text("Instructions")
@@ -235,6 +256,38 @@ public struct ProjectAgentGenerationWindow: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal)
+            }
+
+            // Live Thinking Steps
+            if !thinkingSummaries.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Thinking Steps")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal)
+
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 4) {
+                            ForEach(Array(thinkingSummaries.enumerated()), id: \.offset) { index, summary in
+                                HStack(alignment: .top, spacing: 6) {
+                                    Image(systemName: "brain")
+                                        .font(.caption)
+                                        .foregroundStyle(.purple)
+                                    Text("\(index + 1). \(summary)")
+                                        .font(.caption2)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                .padding(6)
+                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                    }
+                    .frame(maxHeight: 150)
+                    .background(Color.secondary.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+                    .padding(.horizontal)
+                }
             }
 
             // Tool Call Log
@@ -347,6 +400,9 @@ public struct ProjectAgentGenerationWindow: View {
             activeToolName = nil
             pendingToolArgs = [:]
             sectionReadCounts = [:]
+            thinkingSummaries = []
+            cumulativeReasoning = 0
+            cumulativeCached = 0
 
             do {
                 // Always use the Responses API path, regardless of the connection's endpointType
@@ -386,11 +442,14 @@ public struct ProjectAgentGenerationWindow: View {
 
                 let validRequestTimeout = max(10, min(900, TimeInterval(llmConnection.requestTimeoutSeconds)))
                 let validResourceTimeout = max(30, min(3600, TimeInterval(llmConnection.requestTimeoutSeconds)))
-                let configParams: [ResponseConfigParameter] = [
+                var configParams: [ResponseConfigParameter] = [
                     try RequestTimeout(validRequestTimeout),
                     try ResourceTimeout(validResourceTimeout),
                     try Instructions(buildSystemPrompt()),
                 ]
+                if let effort = selectedReasoningEffort {
+                    configParams.append(Reasoning(effort: effort, summary: .auto))
+                }
 
                 let stream = session.stream(
                     model: llmConnection.selectedModel,
@@ -408,6 +467,7 @@ public struct ProjectAgentGenerationWindow: View {
                 for try await event in stream {
                     switch event {
                     case .iterationStarted(let n):
+                        extractCompletedThinkBlocks()
                         iterationCount = n
                         liveStatus = "Thinking (iteration \(n))…"
                         generatedContent = ""
@@ -430,7 +490,7 @@ public struct ProjectAgentGenerationWindow: View {
                         if name == "read_section_tool" {
                             if let data = args.data(using: .utf8),
                                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                               let sectionName = json["section_name"] as? String {
+                               let sectionName = json["sectionName"] as? String {
                                 sectionReadCounts[sectionName, default: 0] += 1
                             }
                         }
@@ -439,6 +499,58 @@ public struct ProjectAgentGenerationWindow: View {
                         switch streamEvent {
                         case .contentPartDelta(let delta, _, _):
                             generatedContent += delta
+                            // Live extraction of completed <think> blocks
+                            extractCompletedThinkBlocks()
+                        case .outputItemDone(let item, _):
+                            if case .reasoning(let reasoningItem) = item {
+                                // Prefer contentText (full reasoning) for thinkingBlocks display
+                                if let content = reasoningItem.contentText, !content.isEmpty {
+                                    thinkingBlocks.append(content)
+                                    hasThinkingContent = true
+                                }
+                                // Still capture summaries for the Thinking Steps panel
+                                if let summaries = reasoningItem.summary {
+                                    for summary in summaries {
+                                        thinkingSummaries.append(summary.text)
+                                    }
+                                }
+                            } else if case .message(let msg) = item {
+                                for content in msg.content {
+                                    if case .outputText(let textContent) = content {
+                                        let parsed = textContent.text.extractingThinkingBlocks()
+                                        thinkingSummaries.append(contentsOf: parsed.thinkingBlocks)
+                                    }
+                                }
+                            }
+                        case .responseCompleted(let response):
+                            for item in response.output {
+                                if case .reasoning(let reasoningItem) = item,
+                                   let summaries = reasoningItem.summary {
+                                    for summary in summaries {
+                                        if !thinkingSummaries.contains(summary.text) {
+                                            thinkingSummaries.append(summary.text)
+                                        }
+                                    }
+                                } else if case .message(let msg) = item {
+                                    for content in msg.content {
+                                        if case .outputText(let textContent) = content {
+                                            let parsed = textContent.text.extractingThinkingBlocks()
+                                            for block in parsed.thinkingBlocks {
+                                                if !thinkingSummaries.contains(block) {
+                                                    thinkingSummaries.append(block)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        case .reasoningSummaryPartAdded:
+                            break
+                        case .reasoningSummaryPartDone(let part, _, _):
+                            let summary = part.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !summary.isEmpty && !thinkingSummaries.contains(summary) {
+                                thinkingSummaries.append(summary)
+                            }
                         default:
                             break
                         }
@@ -446,9 +558,18 @@ public struct ProjectAgentGenerationWindow: View {
                     case .usageUpdate(let usage, let iteration):
                         cumulativeInput += usage.inputTokens
                         cumulativeOutput += usage.outputTokens
+                        let reasoning = usage.outputTokensDetails?.reasoningTokens ?? 0
+                        let cached = usage.inputTokensDetails?.cachedTokens ?? 0
+                        cumulativeReasoning += reasoning
+                        cumulativeCached += cached
                         iterationUsages.append((iteration, usage))
-                        tokenUsageSummary = "Tokens — Input: \(cumulativeInput) | Output: \(cumulativeOutput) | Total: \(cumulativeInput + cumulativeOutput)"
-                        // No liveStatus update — Column 2 token bar handles display
+
+                        var parts = ["Input: \(cumulativeInput)"]
+                        if cumulativeCached > 0 { parts[0] += " (\(cumulativeCached) cached)" }
+                        if cumulativeReasoning > 0 { parts.append("Reasoning: \(cumulativeReasoning)") }
+                        parts.append("Output: \(cumulativeOutput)")
+                        parts.append("Total: \(cumulativeInput + cumulativeOutput)")
+                        tokenUsageSummary = "Tokens — " + parts.joined(separator: " | ")
                     }
                 }
 
@@ -458,12 +579,16 @@ public struct ProjectAgentGenerationWindow: View {
                 // Extract thinking blocks from accumulated content
                 if !generatedContent.isEmpty {
                     let parsed = generatedContent.extractingThinkingBlocks()
-                    thinkingBlocks = parsed.thinkingBlocks
-                    hasThinkingContent = !parsed.thinkingBlocks.isEmpty
-                    let finalContent = parsed.content.isEmpty && !parsed.thinkingBlocks.isEmpty
+                    // Append <think>-tag blocks to any structured reasoning already collected
+                    thinkingBlocks.append(contentsOf: parsed.thinkingBlocks)
+                    hasThinkingContent = !thinkingBlocks.isEmpty
+                    let finalContent = parsed.content.isEmpty && !thinkingBlocks.isEmpty
                         ? "[Model produced only reasoning content with no final output. See the Thinking Process panel above.]"
                         : parsed.content
                     generatedContent = finalContent
+                    if thinkingSummaries.isEmpty && !thinkingBlocks.isEmpty {
+                        thinkingSummaries = thinkingBlocks
+                    }
                 } else {
                     generatedContent = """
                         [Agent completed \(toolCallLog.count) tool call(s) across \
@@ -572,6 +697,31 @@ public struct ProjectAgentGenerationWindow: View {
     private func copyToClipboard() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(generatedContent, forType: .string)
+    }
+
+    // MARK: - Live Think Block Extraction
+
+    /// Extracts completed `<think>...</think>` blocks from `generatedContent` into `thinkingSummaries` during streaming.
+    private func extractCompletedThinkBlocks() {
+        let closeTag = "</think>"
+        while let closeRange = generatedContent.range(of: closeTag, options: .caseInsensitive) {
+            let prefix = String(generatedContent[generatedContent.startIndex..<closeRange.lowerBound])
+            let openTag = "<think>"
+            if let openRange = prefix.range(of: openTag, options: .caseInsensitive) {
+                let thinking = String(prefix[openRange.upperBound...])
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if !thinking.isEmpty {
+                    thinkingSummaries.append(thinking)
+                }
+                // Remove the entire <think>...</think> block from generatedContent
+                let beforeOpen = String(generatedContent[generatedContent.startIndex..<openRange.lowerBound])
+                let afterClose = String(generatedContent[closeRange.upperBound...])
+                generatedContent = beforeOpen + afterClose
+            } else {
+                // Malformed — close tag without open tag, stop processing
+                break
+            }
+        }
     }
 
     // MARK: - Error Formatting

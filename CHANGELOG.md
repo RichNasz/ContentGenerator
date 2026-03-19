@@ -8,12 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- [OpenResponsesAgentGen] Add reasoning effort picker (None/Low/Medium/High/xHigh, default Medium), ReasoningItem.contentText capture for structured reasoning display, and detailed token breakdowns (reasoning tokens, cached input tokens) in the live token usage summary; update SwiftOpenResponsesDSL pin to revision 11391d7
+- [OpenResponsesAgentGen] Add reasoning summary streaming support by parsing `response.reasoning_summary_part.added` and `response.reasoning_summary_part.done` SSE events from SwiftOpenResponsesDSL, surfacing reasoning/thinking content from models that emit these events (e.g. nemotron-3-nano on OpenRouter)
+- [ChatCompletionsAgentGen] Add token usage display specs: completion summary (prompt/completion/total tokens), Column 2 placement below tool call log, and DSL gap note for future per-iteration usage tracking
 - [ChatCompletionsAgentGen] Add get_unread_sections_tool and SectionReadTracker actor to enforce harness-side section completeness, guaranteeing the agent reads all enabled sections before writing its response
 - [Project] Add GitHub Actions workflows for CI (SPM package builds/tests + Xcode app build/test), PR validation (conventional commit title check + changelog presence check), and tag-triggered release builds with artifact upload and GitHub Release creation
 - [Project] Document .claude/ AI tooling structure in ProjectOverviewSpec, listing all 13 workflow skills and noting sub-project settings.local.json files are gitignored and skill-free
 
 ### Changed
 
+- [OpenResponsesAgentGen, ChatCompletionsAgentGen] Derive maxIterations dynamically from enabled section count (enabledSections + 5) instead of static max(15, sections.count + 5), tightening the iteration limit to match the expected tool call flow
 - [ContentGenerator] Fill spec completeness gaps for duplicate attachment replacement: add exact dialog title/message/button-label copy, full replaceAttachment(_:withFileAt:) signature and execution sequence, FileAttachmentSection @State property inventory, FileSelectionResult tuple field semantics, and selectAndAttachFiles catch-behaviour notes
 
 ### Deprecated
