@@ -69,6 +69,7 @@ public actor SectionReadTracker {
 - Wrapped in `#if os(macOS)`
 - Receives data as init parameters (mirrors `ProjectContentGenerationWindow` pattern)
 - Uses `ToolSession` (non-declarative init) with `makeAgentTools()` output
+- **Iteration limit**: `maxIterations: (sections.filter(\.isEnabled).count * 2) + 5` — dynamically derived from enabled section count × 2 (accounts for alternating read/check pattern) plus overhead
 - Log displayed post-completion via `result.log` (populated on the `.completed` event)
 - **Instructions field initialization**: In the `.task` modifier, `instructions` always initializes to the generic task request string — never to `projectSystemPrompt`. The system prompt already appears in the LLM system message via `buildSystemPrompt()` as role/context; using it as the instructions default would place it in two semantically different roles at once.
 - **Tracker lifecycle**: `let tracker = SectionReadTracker()` is created at the top of `runAgent()`, before `makeAgentTools()`. A fresh tracker per run ensures prior session reads do not bleed.
@@ -103,4 +104,4 @@ public actor SectionReadTracker {
 - `LLMmanagement`: `LLMConnection`, `LLMClient`
 
 ---
-**Last Updated:** 2026-03-18 (token usage display: tokenUsageSummary state, .completed handler extraction, DSL gap note for per-iteration usage)
+**Last Updated:** 2026-03-18

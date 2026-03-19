@@ -1,6 +1,6 @@
 //
 //  ProjectAgentGenerationWindow.swift
-//  ChatCompletionsAgentGen
+//  OpenResponsesAgentGen
 //
 //  Created by Richard Naszcyniec with AI-assisted code generation.
 //
@@ -12,11 +12,11 @@
 import SwiftUI
 import SwiftData
 import LLMmanagement
-import SwiftChatCompletionsDSL
+import SwiftOpenResponsesDSL
 import SwiftLLMToolMacros
 import UniformTypeIdentifiers
 
-/// Three-column agent generation window for project-level content creation.
+/// Three-column agent generation window for project-level content creation using the Open Responses API.
 ///
 /// The agent inspects specification sections via tool calls before producing final content.
 /// Column 1: project overview (readonly). Column 2: LLM controls and tool call log.
@@ -37,13 +37,16 @@ public struct ProjectAgentGenerationWindow: View {
     @State private var instructions: String = ""
     @State private var isRunning: Bool = false
     @State private var generatedContent: String = ""
-    @State private var toolCallLog: [ToolCallLogEntry] = []
+    @State private var toolCallLog: [LocalToolCallLogEntry] = []
     @State private var errorMessage: String? = nil
     @State private var showingError: Bool = false
     @State private var thinkingBlocks: [String] = []
     @State private var hasThinkingContent: Bool = false
+    @State private var tokenUsageSummary: String = ""
     @State private var liveStatus: String = ""
     @State private var activeToolName: String? = nil
+    @State private var pendingToolArgs: [String: String] = [:]
+    @State private var sectionReadCounts: [String: Int] = [:]
 
     public init(
         projectName: String,
@@ -100,7 +103,7 @@ public struct ProjectAgentGenerationWindow: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Project Agent", systemImage: "brain.fill")
+            Label("Project Agent (Responses)", systemImage: "brain.fill")
                 .font(.title2)
                 .fontWeight(.semibold)
             Text("Agent-assisted generation for: \(projectName)")
@@ -146,6 +149,16 @@ public struct ProjectAgentGenerationWindow: View {
                             Text(section.name)
                                 .font(.caption)
                                 .foregroundStyle(section.isEnabled ? .primary : .secondary)
+                            Spacer()
+                            if let count = sectionReadCounts[section.name], count > 0 {
+                                Text("\(count)×")
+                                    .font(.caption2)
+                                    .monospacedDigit()
+                                    .foregroundStyle(.blue)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(.blue.opacity(0.12), in: Capsule())
+                            }
                         }
                     }
                 }
@@ -200,7 +213,7 @@ public struct ProjectAgentGenerationWindow: View {
                 HStack(spacing: 8) {
                     if isRunning {
                         ProgressView().scaleEffect(0.8)
-                        Text("Running Agent…")
+                        Text("Running Agent...")
                     } else {
                         Image(systemName: "brain.fill")
                         Text("Run Agent")
@@ -210,6 +223,19 @@ public struct ProjectAgentGenerationWindow: View {
             .buttonStyle(.borderedProminent)
             .disabled(!canRun)
             .padding(.horizontal)
+
+            // Token Usage (live during generation, final after completion)
+            if isRunning || !tokenUsageSummary.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "gauge.with.dots.needle.33percent")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(tokenUsageSummary.isEmpty ? "Waiting for first iteration…" : tokenUsageSummary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal)
+            }
 
             // Tool Call Log
             VStack(alignment: .leading, spacing: 4) {
@@ -316,12 +342,23 @@ public struct ProjectAgentGenerationWindow: View {
             thinkingBlocks = []
             hasThinkingContent = false
             errorMessage = nil
+            tokenUsageSummary = ""
             liveStatus = ""
             activeToolName = nil
+            pendingToolArgs = [:]
+            sectionReadCounts = [:]
 
             do {
+                // Always use the Responses API path, regardless of the connection's endpointType
+                let responsesUrl = llmConnection.urlPath != nil
+                    ? llmConnection.fullApiUrl
+                    : {
+                        let base = llmConnection.baseUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let baseWithoutSlash = base.hasSuffix("/") ? String(base.dropLast()) : base
+                        return baseWithoutSlash + OpenAIEndpointType.responses.defaultPath
+                    }()
                 let client = try LLMClient(
-                    baseURL: llmConnection.fullApiUrl,
+                    baseURL: responsesUrl,
                     apiKey: llmConnection.apiKey
                 )
 
@@ -349,63 +386,103 @@ public struct ProjectAgentGenerationWindow: View {
 
                 let validRequestTimeout = max(10, min(900, TimeInterval(llmConnection.requestTimeoutSeconds)))
                 let validResourceTimeout = max(30, min(3600, TimeInterval(llmConnection.requestTimeoutSeconds)))
-                let configParams: [ChatConfigParameter] = [
+                let configParams: [ResponseConfigParameter] = [
                     try RequestTimeout(validRequestTimeout),
                     try ResourceTimeout(validResourceTimeout),
+                    try Instructions(buildSystemPrompt()),
                 ]
 
                 let stream = session.stream(
                     model: llmConnection.selectedModel,
-                    messages: [
-                        TextMessage(role: .system, content: buildSystemPrompt()),
-                        TextMessage(role: .user, content: userMessage),
+                    input: [
+                        User(userMessage),
                     ],
                     configParams: configParams
                 )
 
+                var cumulativeInput = 0
+                var cumulativeOutput = 0
+                var iterationUsages: [(iteration: Int, usage: ResponseObject.Usage)] = []
+                var iterationCount = 0
+
                 for try await event in stream {
                     switch event {
-                    case .textDelta(let delta):
-                        generatedContent += delta
+                    case .iterationStarted(let n):
+                        iterationCount = n
+                        liveStatus = "Thinking (iteration \(n))…"
+                        generatedContent = ""
 
-                    case .modelResponse(_, _, let iteration):
-                        liveStatus = "Thinking (iteration \(iteration + 1))…"
-
-                    case .toolStarted(let name, _):
+                    case .toolCallStarted(let callId, let name, let arguments):
                         activeToolName = name
                         liveStatus = "Calling \(name)…"
+                        pendingToolArgs[callId] = arguments
 
-                    case .toolCompleted(let name, _, _):
+                    case .toolCallCompleted(let callId, let name, let output, let duration):
                         if activeToolName == name { activeToolName = nil }
                         liveStatus = "Tool \(name) finished. Waiting for model…"
-
-                    case .completed(let result):
-                        activeToolName = nil
-                        liveStatus = ""
-                        toolCallLog = result.log
-
-                        let rawContent = result.response.firstContent ?? ""
-                        if rawContent.isEmpty {
-                            generatedContent = """
-                                [Agent completed \(result.log.count) tool call(s) across \
-                                \(result.iterations) iteration(s) but produced no text content. \
-                                The model returned an empty response. Try re-running, or check \
-                                whether the model supports multi-turn tool calling.]
-                                """
-                        } else {
-                            let parsed = rawContent.extractingThinkingBlocks()
-                            thinkingBlocks = parsed.thinkingBlocks
-                            hasThinkingContent = !parsed.thinkingBlocks.isEmpty
-                            let finalContent = parsed.content.isEmpty && !parsed.thinkingBlocks.isEmpty
-                                ? "[Model produced only reasoning content with no final output. See the Thinking Process panel above.]"
-                                : parsed.content
-                            generatedContent = finalContent
+                        let args = pendingToolArgs.removeValue(forKey: callId) ?? ""
+                        toolCallLog.append(LocalToolCallLogEntry(
+                            name: name,
+                            arguments: args,
+                            result: output,
+                            duration: duration
+                        ))
+                        if name == "read_section_tool" {
+                            if let data = args.data(using: .utf8),
+                               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                               let sectionName = json["section_name"] as? String {
+                                sectionReadCounts[sectionName, default: 0] += 1
+                            }
                         }
-                        llmConnection.updateLastUsed()
-                        onContentGenerated(generatedContent)
-                        onLLMSelectionChanged?(selectedLLMId)
+
+                    case .llm(let streamEvent):
+                        switch streamEvent {
+                        case .contentPartDelta(let delta, _, _):
+                            generatedContent += delta
+                        default:
+                            break
+                        }
+
+                    case .usageUpdate(let usage, let iteration):
+                        cumulativeInput += usage.inputTokens
+                        cumulativeOutput += usage.outputTokens
+                        iterationUsages.append((iteration, usage))
+                        tokenUsageSummary = "Tokens — Input: \(cumulativeInput) | Output: \(cumulativeOutput) | Total: \(cumulativeInput + cumulativeOutput)"
+                        // No liveStatus update — Column 2 token bar handles display
                     }
                 }
+
+                activeToolName = nil
+                liveStatus = ""
+
+                // Extract thinking blocks from accumulated content
+                if !generatedContent.isEmpty {
+                    let parsed = generatedContent.extractingThinkingBlocks()
+                    thinkingBlocks = parsed.thinkingBlocks
+                    hasThinkingContent = !parsed.thinkingBlocks.isEmpty
+                    let finalContent = parsed.content.isEmpty && !parsed.thinkingBlocks.isEmpty
+                        ? "[Model produced only reasoning content with no final output. See the Thinking Process panel above.]"
+                        : parsed.content
+                    generatedContent = finalContent
+                } else {
+                    generatedContent = """
+                        [Agent completed \(toolCallLog.count) tool call(s) across \
+                        \(iterationCount) iteration(s) but produced no text content. \
+                        The model returned an empty response. Try re-running, or check \
+                        whether the model supports multi-turn tool calling.]
+                        """
+                }
+
+                let totalTokens = cumulativeInput + cumulativeOutput
+                if totalTokens > 0 {
+                    tokenUsageSummary = "Input: \(cumulativeInput) | Output: \(cumulativeOutput) | Total: \(totalTokens) tokens (\(iterationUsages.count) iterations)"
+                } else {
+                    tokenUsageSummary = "Token usage unavailable"
+                }
+
+                llmConnection.updateLastUsed()
+                onContentGenerated(generatedContent)
+                onLLMSelectionChanged?(selectedLLMId)
 
             } catch let error as LLMError {
                 activeToolName = nil
@@ -524,7 +601,7 @@ public struct ProjectAgentGenerationWindow: View {
         case .maxIterationsExceeded(let n):
             return "Agent exceeded maximum tool iterations (\(n)). Try a simpler request."
         case .unknownTool(let name):
-            let quoted = name.debugDescription   // shows invisible chars, quotes the string
+            let quoted = name.debugDescription
             return "Unknown tool requested: \(quoted). This model may format tool names differently from what is registered."
         case .toolExecutionFailed(let tool, let msg):
             return "Tool '\(tool)' failed: \(msg)"
