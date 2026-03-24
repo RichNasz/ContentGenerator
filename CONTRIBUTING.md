@@ -12,7 +12,7 @@ ContentGenerator uses a specification-driven methodology. All code changes **mus
 
 1. **Before writing or modifying code:** Run `/prep-for-coding <feature area>` to read applicable specs and produce an implementation approach.
 2. **Write or modify code.**
-3. **After code changes:** Run `/validate-build <target>` (target: ContentGenerator, LLMmanagement, or ProjectExchange) to verify the build.
+3. **After code changes:** Run `/validate-build <target>` (target: ContentGenerator, LLMmanagement, ProjectExchange, or AgentGen) to verify the build.
 4. **After resolving any error:** Run `/log-error <description>` to document the error in CodeLessonsLearned.md.
 5. **After completing functionality changes:** Run `/update-specs <description>` to update FunctionalSpecs, SwiftTechSpecs, and CodeLessonsLearned.
 6. **Optional:** Run `/log-change <description>` to record the change in CHANGELOG.md.
@@ -74,13 +74,14 @@ xcodebuild -version  # must be Xcode 26.3 or later
 2. Open `ContentGenerator/ContentGenerator.xcodeproj` in Xcode
    — this is the only `.xcodeproj` in the monorepo; do not open the repo root
 3. Build and run (Cmd+R)
-4. LLMmanagement and ProjectExchange resolve automatically as local SPM packages
+4. LLMmanagement, ProjectExchange, and AgentGen resolve automatically as local SPM packages
 
-### SPM Packages (LLMmanagement / ProjectExchange)
+### SPM Packages (LLMmanagement / ProjectExchange / AgentGen)
 For package-only builds and tests, work from each package's directory:
 ```bash
 cd LLMmanagement && swift build && swift test
 cd ProjectExchange && swift build && swift test
+cd AgentGen && swift build
 ```
 Package changes are reflected in the Xcode app project automatically — no manual re-link step required.
 
@@ -90,7 +91,7 @@ Claude Code must be launched from the **monorepo root**, not from a subdirectory
 cd /path/to/ContentGenerator
 claude
 ```
-Running from the root ensures all skill paths resolve correctly, CommonSpecs and ProjectSpecs are reachable, and the full three-target context is available. See `CLAUDE.md` at the repo root for the required skill-driven workflow.
+Running from the root ensures all skill paths resolve correctly, CommonSpecs and ProjectSpecs are reachable, and the full four-target context is available. See `CLAUDE.md` at the repo root for the required skill-driven workflow.
 
 ### Key Conventions
 - No MVVM — views manage state directly with `@State`/`@Bindable`

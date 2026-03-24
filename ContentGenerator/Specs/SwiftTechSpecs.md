@@ -517,70 +517,30 @@ The application uses dedicated windows for content generation workflows, separat
 - Use `@Environment(\.openWindow)` to launch generation windows
 - Window scenes registered in app definition with appropriate identifiers
 
-### Agent Generation Window Pattern (ChatCompletionsAgentGen Package)
+### Agent Generation Window Pattern (AgentGen Package)
 
-The `ChatCompletionsAgentGen` local Swift package (at `ChatCompletionsAgentGen/`) provides the agent-based generation window. It is macOS-only; all views are guarded with `#if os(macOS)`.
+The `AgentGen` local Swift package (at `AgentGen/`) provides the agent-based generation window with pluggable inference backends. It is macOS-only; views and the Open Responses backend are guarded with `#if os(macOS)`.
 
-#### Thinking Model Response Handling
+#### Backend Architecture
 
-Thinking models embed chain-of-thought reasoning inside `<think>…</think>` tags. The package strips these before displaying or returning content.
+The view delegates inference to `AgentInferenceBackend` conformers that yield `AgentEvent` values through `AsyncThrowingStream`. Two backends:
+- **`AppleIntelligenceBackend`** — on-device via Foundation Models (`LanguageModelSession.respond()`)
+- **`OpenResponsesBackend`** — cloud/local via `SwiftOpenResponsesDSL` (`ToolSession.stream()`)
 
-**`ThinkingParseResult`** (`Utilities/String+ThinkingBlocks.swift`) — platform-agnostic, `import Foundation` required:
-```swift
-struct ThinkingParseResult: Sendable {
-    let content: String         // text outside <think> blocks, whitespace-trimmed and joined
-    let thinkingBlocks: [String] // text from each block, in document order
-}
+The view consumes a unified event stream via `handleEvent(_:)` without knowing the backend.
 
-extension String {
-    func extractingThinkingBlocks() -> ThinkingParseResult { /* ... */ }
-}
-```
-- Tag matching is case-insensitive (`<THINK>` is treated the same as `<think>`)
-- An unclosed `<think>` tag is treated as a complete block (the remaining text is captured)
-- If no thinking tags are present the result is `ThinkingParseResult(content: self.trimmed, thinkingBlocks: [])`
+#### Unified Activity Log
 
-**`ThinkingBlockView`** (`Views/ThinkingBlockView.swift`) — `#if os(macOS)`, follows `AgentToolCallLogView` visual conventions (`.regularMaterial` background, `Color.secondary.opacity(0.08)` content boxes, caption fonts):
-```swift
-struct ThinkingBlockView: View {
-    let blocks: [String]
-    // Collapsed by default; header shows block count + word count summary
-    // Each block rendered in a ScrollView capped at 200pt height, .textSelection(.enabled)
-}
-```
+All interaction events (status, thinking, tool calls, token usage, completion/failure) are captured as `ActivityLogEntry` values in a single chronological `activityLog: [ActivityLogEntry]` array, displayed in Column 2. There are no separate thinking or tool call log sections.
 
-**`ProjectAgentGenerationWindow` integration** — new `@State` properties added alongside existing ones:
-```swift
-@State private var thinkingBlocks: [String] = []
-@State private var hasThinkingContent: Bool = false
-```
+#### Connection Filtering
 
-Reset on each `runAgent()` call (alongside `generatedContent = ""` and `toolCallLog = []`).
-
-Success path in `runAgent()` — after `rawContent` is available, parse before storing:
-```swift
-let parsed = rawContent.extractingThinkingBlocks()
-thinkingBlocks = parsed.thinkingBlocks
-hasThinkingContent = !parsed.thinkingBlocks.isEmpty
-let finalContent = parsed.content.isEmpty && !parsed.thinkingBlocks.isEmpty
-    ? "[Model produced only reasoning content with no final output. See the Thinking Process panel above.]"
-    : parsed.content
-generatedContent = finalContent
-// onContentGenerated(generatedContent) receives the stripped content — intentional
-```
-
-`generatedContentColumn` conditionally inserts `ThinkingBlockView` between the column headline and the content `ScrollView`:
-```swift
-if hasThinkingContent {
-    ThinkingBlockView(blocks: thinkingBlocks)
-        .padding(.horizontal)
-}
-```
+Only `LLMConnection` instances with `endpointType == .responses` appear in the picker. Connections with local base URLs (localhost, 127.0.0.1, ::1) are grouped under "On-Device" alongside Apple Intelligence.
 
 **Key constraints:**
-- `ThinkingParseResult` must be `Sendable` — it crosses the async `Task {}` boundary inside `runAgent()`
-- No `@MainActor` annotation needed on `ThinkingBlockView` — default MainActor isolation applies
 - No `@Query` anywhere in the package — use manual `modelContext.fetch(FetchDescriptor<T>(...))` (see ERR-SWIFTDATA-001)
+- Backend `run()` methods use `AsyncThrowingStream.makeStream()` + `Task { @MainActor in }` + static methods to avoid `sending` data race errors (see AgentGen CodeLessonsLearned ERR-COMPILE-003)
+- See `AgentGen/Specs/SwiftTechSpecs.md` for full type definitions and implementation details
 
 ### LLM Integration Patterns
 
@@ -1138,6 +1098,6 @@ nonisolated func batchUpdateProjects(_ updates: [ProjectUpdate]) async throws {
 
 ---
 
-**Last Updated**: 2026-03-17 (updated: ChatCompletionsAgentGen agent generation + thinking model response handling patterns added)
+**Last Updated**: 2026-03-24 (updated: ChatCompletionsAgentGen replaced with AgentGen multi-backend architecture)
 **Swift Version**: 6.2.3 (Xcode toolchain), language version 6.2, with Default MainActor Isolation
 **Important:** This document provides implementation guidance only. Actual code should be generated and compiled to ensure correctness. Update this document as architectural decisions are made during development.

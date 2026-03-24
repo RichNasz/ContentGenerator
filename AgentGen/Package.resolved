@@ -1,5 +1,5 @@
 {
-  "originHash" : "1fa1a62fe39f6938bf13b05ae0be875505e364b7fee9952e5c649b7087a41c13",
+  "originHash" : "e1937feabc2d5c5b2c04d1bcc8ac24519fea29edadee6d0664d5a4a98d485b7f",
   "pins" : [
     {
       "identity" : "swift-syntax",
@@ -8,15 +8,6 @@
       "state" : {
         "revision" : "4799286537280063c85a32f09884cfbca301b1a1",
         "version" : "602.0.0"
-      }
-    },
-    {
-      "identity" : "swiftchatcompletionsdsl",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/RichNasz/SwiftChatCompletionsDSL",
-      "state" : {
-        "branch" : "main",
-        "revision" : "51916abf684e96077d967bf7dd78af7ac7fe3bfd"
       }
     },
     {

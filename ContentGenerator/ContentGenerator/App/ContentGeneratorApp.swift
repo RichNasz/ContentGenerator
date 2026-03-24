@@ -10,7 +10,7 @@
 
 import SwiftUI
 import SwiftData
-import ChatCompletionsAgentGen
+import AgentGen
 
 @main
 struct ContentGeneratorApp: App {
@@ -21,7 +21,7 @@ struct ContentGeneratorApp: App {
     @State private var projectExportService: ProjectExportService?
     @State private var contentGenerationWindowState = ContentGenerationWindowState()
     @State private var projectContentGenerationWindowState = ProjectContentGenerationWindowState()
-    @State private var agentGenerationWindowState = AgentGenerationWindowState()
+    @State private var agentWindowState = AgentGen.AgentGenerationWindowState()
 
     var body: some Scene {
         WindowGroup {
@@ -35,7 +35,7 @@ struct ContentGeneratorApp: App {
                         .environment(projectExportService)
                         .environment(contentGenerationWindowState)
                         .environment(projectContentGenerationWindowState)
-                        .environment(agentGenerationWindowState)
+                        .environment(agentWindowState)
                         .modelContainer(dataManager.getContainer())
                 } else {
                     BundleWelcomeView()
@@ -104,23 +104,23 @@ struct ContentGeneratorApp: App {
         // Project Agent Generation Window
         WindowGroup(id: "project-agent-generation") {
             if let dataManager {
-                ProjectAgentGenerationWindow(
-                    projectName: agentGenerationWindowState.projectName,
-                    projectSystemPrompt: agentGenerationWindowState.projectSystemPrompt,
-                    projectLLMConnectionId: agentGenerationWindowState.projectLLMConnectionId,
-                    sections: agentGenerationWindowState.sections,
+                AgentGen.ProjectAgentGenerationWindow(
+                    projectName: agentWindowState.projectName,
+                    projectSystemPrompt: agentWindowState.projectSystemPrompt,
+                    projectLLMConnectionId: agentWindowState.projectLLMConnectionId,
+                    sections: agentWindowState.sections,
                     modelContext: dataManager.createContext(),
                     onContentGenerated: { content in
-                        agentGenerationWindowState.onContentGenerated?(content)
+                        agentWindowState.onContentGenerated?(content)
                     },
                     onLLMSelectionChanged: { llmId in
-                        agentGenerationWindowState.onLLMSelectionChanged?(llmId)
+                        agentWindowState.onLLMSelectionChanged?(llmId)
                     }
                 )
                 .environment(dataManager)
                 .modelContainer(dataManager.getContainer())
                 .onDisappear {
-                    agentGenerationWindowState.reset()
+                    agentWindowState.reset()
                 }
             }
         }

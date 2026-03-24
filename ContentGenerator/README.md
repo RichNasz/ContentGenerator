@@ -4,7 +4,7 @@ ContentGenerator is the main macOS application — an AI-infused content generat
 
 ## Role in Monorepo
 
-This is the primary application target. It references [LLMmanagement](../LLMmanagement/) and [ProjectExchange](../ProjectExchange/) as local Swift packages via relative paths in the Xcode project.
+This is the primary application target. It references [LLMmanagement](../LLMmanagement/), [ProjectExchange](../ProjectExchange/), and [AgentGen](../AgentGen/) as local Swift packages via relative paths in the Xcode project.
 
 ## Key Features
 
@@ -31,7 +31,7 @@ For the comprehensive feature reference, see [AppDocumentation.md](../AppDocumen
 1. Open `ContentGenerator.xcodeproj` in Xcode 16+
 2. Build and run (Cmd+R)
 
-Local package dependencies (LLMmanagement, ProjectExchange) resolve automatically.
+Local package dependencies (LLMmanagement, ProjectExchange, AgentGen) resolve automatically.
 
 ---
 

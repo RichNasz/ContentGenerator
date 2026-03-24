@@ -97,6 +97,15 @@ ContentGenerator/                    # Repository root
 │       ├── SwiftTechSpecs.md
 │       └── CodeLessonsLearned.md
 │
+├── AgentGen/                        # Swift package — agent-based content generation
+│   ├── Package.swift                # SPM manifest (swift-tools-version: 6.2)
+│   ├── Sources/                     # Package source code
+│   ├── Tests/                       # Package tests
+│   └── Specs/                       # Target-specific specs
+│       ├── FunctionalSpecs.md
+│       ├── SwiftTechSpecs.md
+│       └── CodeLessonsLearned.md
+│
 ├── ContentGenerator.xcworkspace/    # Xcode workspace (aggregates all components)
 ├── ContentGenerator.icon/           # App icon assets
 │
@@ -113,6 +122,7 @@ The Xcode project (`ContentGenerator/ContentGenerator.xcodeproj`) references LLM
 
 - `../LLMmanagement` — resolves to the LLMmanagement directory at the repo root
 - `../ProjectExchange` — resolves to the ProjectExchange directory at the repo root
+- `../AgentGen` — agent-based content generation with multi-backend support
 
 These references are stored in the `.xcodeproj` file. When you open the project in Xcode, the packages resolve automatically — no `swift package resolve` or manual setup required.
 
@@ -145,3 +155,4 @@ Human-readable specifications for the Claude Code skills defined in `.claude/ski
 For package-only work:
 - `cd LLMmanagement && swift build`
 - `cd ProjectExchange && swift build`
+- `cd AgentGen && swift build`

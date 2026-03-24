@@ -36,18 +36,19 @@ ContentGenerator is a native macOS application that leverages large language mod
    ```
 2. Open `ContentGenerator/ContentGenerator.xcodeproj` in Xcode
 3. Build and run (Cmd+R)
-4. Note: LLMmanagement and ProjectExchange resolve automatically as local SPM packages
+4. Note: LLMmanagement, ProjectExchange, and AgentGen resolve automatically as local SPM packages
 5. To use Claude Code, run `claude` from the repo root (not a subdirectory)
 
 ## Architecture
 
-ContentGenerator is a monorepo containing three components:
+ContentGenerator is a monorepo containing four components:
 
 | Component | Type | Path | Purpose |
 |-----------|------|------|---------|
 | **ContentGenerator** | macOS App | `ContentGenerator/` | UI, project management, content generation workflows |
 | **LLMmanagement** | Swift Package | `LLMmanagement/` | LLM connection management, OpenAI-compatible API client, streaming |
 | **ProjectExchange** | Swift Package | `ProjectExchange/` | JSON import/export with schema versioning, conflict resolution |
+| **AgentGen** | Swift Package | `AgentGen/` | Agent-based content generation with pluggable inference backends (Apple Intelligence, Open Responses) |
 
 ### Spec-Driven Development
 
@@ -59,6 +60,7 @@ This project follows a spec-driven development methodology where specification f
 - **[ContentGenerator/Specs/](ContentGenerator/Specs/)** — App specifications
 - **[LLMmanagement/Specs/](LLMmanagement/Specs/)** — LLM package specifications
 - **[ProjectExchange/Specs/](ProjectExchange/Specs/)** — Exchange package specifications
+- **[AgentGen/Specs/](AgentGen/Specs/)** — Agent generation package specifications
 - **[CommonSpecs/](CommonSpecs/)** — Shared Swift development reference specs
 - **[ProjectSpecs/](ProjectSpecs/)** — Monorepo-level project specs
 

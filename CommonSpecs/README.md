@@ -1,6 +1,6 @@
 # CommonSpecs (Shared Development Reference)
 
-Shared Swift development reference specifications used across all three targets (ContentGenerator, LLMmanagement, ProjectExchange). These specs are read by `/prep-for-coding` to inform code generation with consistent patterns and conventions.
+Shared Swift development reference specifications used across all four targets (ContentGenerator, LLMmanagement, ProjectExchange, AgentGen). These specs are read by `/prep-for-coding` to inform code generation with consistent patterns and conventions.
 
 ## Files
 

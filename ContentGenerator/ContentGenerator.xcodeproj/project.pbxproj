@@ -9,15 +9,16 @@
 /* Begin PBXBuildFile section */
 		420E70922F0CB27C00CEC16A /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 420E70912F0CB27C00CEC16A /* .gitignore */; };
 		420E70942F0CBCD200CEC16A /* LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 420E70932F0CBCD200CEC16A /* LICENSE.txt */; };
+		4247A5F92F6B40EA005DDD87 /* SwiftOpenResponsesDSL in Frameworks */ = {isa = PBXBuildFile; productRef = 4247A5F82F6B40EA005DDD87 /* SwiftOpenResponsesDSL */; };
+		4247A5FC2F6B4B53005DDD87 /* AgentGen in Frameworks */ = {isa = PBXBuildFile; productRef = 4247A5FB2F6B4B53005DDD87 /* AgentGen */; };
 		4260FEE02F0C1AC900BB567F /* ProjectExchange in Frameworks */ = {isa = PBXBuildFile; productRef = 4260FEDF2F0C1AC900BB567F /* ProjectExchange */; };
 		4260FEE22F0C620500BB567F /* ContentGenerator.icon in Resources */ = {isa = PBXBuildFile; fileRef = 4260FEE12F0C620500BB567F /* ContentGenerator.icon */; };
 		4260FEE62F0CAEE900BB567F /* ExportOptions.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4260FEE42F0CAEE900BB567F /* ExportOptions.plist */; };
 		4260FEE72F0CAEE900BB567F /* build_for_distribution.sh in Resources */ = {isa = PBXBuildFile; fileRef = 4260FEE32F0CAEE900BB567F /* build_for_distribution.sh */; };
 		426193302EABF3F400B53F04 /* LLMmanagement in Frameworks */ = {isa = PBXBuildFile; productRef = 4261932F2EABF3F400B53F04 /* LLMmanagement */; };
 		426193332EABF75500B53F04 /* SwiftChatCompletionsDSL in Frameworks */ = {isa = PBXBuildFile; productRef = 426193322EABF75500B53F04 /* SwiftChatCompletionsDSL */; };
-		42A85C2F2F57915700833656 /* SwiftChatCompletionsMacros in Frameworks */ = {isa = PBXBuildFile; productRef = 42A85C2E2F57915700833656 /* SwiftChatCompletionsMacros */; };
 		42A85C322F5791D300833656 /* SwiftChatCompletionsDSL in Frameworks */ = {isa = PBXBuildFile; productRef = 42A85C312F5791D300833656 /* SwiftChatCompletionsDSL */; };
-		42D7DAC32F69D3E300712BE5 /* ChatCompletionsAgentGen in Frameworks */ = {isa = PBXBuildFile; productRef = 42D7DAC22F69D3E300712BE5 /* ChatCompletionsAgentGen */; };
+		42D7DBC52F6B23DB00712BE5 /* SwiftLLMToolMacros in Frameworks */ = {isa = PBXBuildFile; productRef = 42D7DBC42F6B23DB00712BE5 /* SwiftLLMToolMacros */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -77,10 +78,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4247A5F92F6B40EA005DDD87 /* SwiftOpenResponsesDSL in Frameworks */,
 				4260FEE02F0C1AC900BB567F /* ProjectExchange in Frameworks */,
-				42D7DAC32F69D3E300712BE5 /* ChatCompletionsAgentGen in Frameworks */,
-				42A85C2F2F57915700833656 /* SwiftChatCompletionsMacros in Frameworks */,
+				4247A5FC2F6B4B53005DDD87 /* AgentGen in Frameworks */,
 				426193332EABF75500B53F04 /* SwiftChatCompletionsDSL in Frameworks */,
+				42D7DBC52F6B23DB00712BE5 /* SwiftLLMToolMacros in Frameworks */,
 				42A85C322F5791D300833656 /* SwiftChatCompletionsDSL in Frameworks */,
 				426193302EABF3F400B53F04 /* LLMmanagement in Frameworks */,
 			);
@@ -162,9 +164,10 @@
 				4261932F2EABF3F400B53F04 /* LLMmanagement */,
 				426193322EABF75500B53F04 /* SwiftChatCompletionsDSL */,
 				4260FEDF2F0C1AC900BB567F /* ProjectExchange */,
-				42A85C2E2F57915700833656 /* SwiftChatCompletionsMacros */,
 				42A85C312F5791D300833656 /* SwiftChatCompletionsDSL */,
-				42D7DAC22F69D3E300712BE5 /* ChatCompletionsAgentGen */,
+				42D7DBC42F6B23DB00712BE5 /* SwiftLLMToolMacros */,
+				4247A5F82F6B40EA005DDD87 /* SwiftOpenResponsesDSL */,
+				4247A5FB2F6B4B53005DDD87 /* AgentGen */,
 			);
 			productName = ContentGenerator;
 			productReference = 426192F52EABBF4200B53F04 /* ContentGenerator.app */;
@@ -251,9 +254,10 @@
 			packageReferences = (
 				4261932E2EABF3F400B53F04 /* XCLocalSwiftPackageReference "../LLMmanagement" */,
 				4260FEDE2F0C1AC900BB567F /* XCLocalSwiftPackageReference "../ProjectExchange" */,
-				42A85C2D2F57915700833656 /* XCRemoteSwiftPackageReference "SwiftChatCompletionsMacros" */,
 				42A85C302F5791D300833656 /* XCRemoteSwiftPackageReference "SwiftChatCompletionsDSL" */,
-				42D7DAC12F69D3E300712BE5 /* XCLocalSwiftPackageReference "../ChatCompletionsAgentGen" */,
+				42D7DBC32F6B23DB00712BE5 /* XCRemoteSwiftPackageReference "SwiftLLMToolMacros" */,
+				4247A5F72F6B40EA005DDD87 /* XCRemoteSwiftPackageReference "SwiftOpenResponsesDSL" */,
+				4247A5FA2F6B4B53005DDD87 /* XCLocalSwiftPackageReference "../AgentGen" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 426192F62EABBF4200B53F04 /* Products */;
@@ -732,6 +736,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		4247A5FA2F6B4B53005DDD87 /* XCLocalSwiftPackageReference "../AgentGen" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../AgentGen;
+		};
 		4260FEDE2F0C1AC900BB567F /* XCLocalSwiftPackageReference "../ProjectExchange" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../ProjectExchange;
@@ -740,16 +748,12 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ../LLMmanagement;
 		};
-		42D7DAC12F69D3E300712BE5 /* XCLocalSwiftPackageReference "../ChatCompletionsAgentGen" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../ChatCompletionsAgentGen;
-		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		42A85C2D2F57915700833656 /* XCRemoteSwiftPackageReference "SwiftChatCompletionsMacros" */ = {
+		4247A5F72F6B40EA005DDD87 /* XCRemoteSwiftPackageReference "SwiftOpenResponsesDSL" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/RichNasz/SwiftChatCompletionsMacros";
+			repositoryURL = "https://github.com/RichNasz/SwiftOpenResponsesDSL";
 			requirement = {
 				branch = main;
 				kind = branch;
@@ -763,9 +767,26 @@
 				kind = branch;
 			};
 		};
+		42D7DBC32F6B23DB00712BE5 /* XCRemoteSwiftPackageReference "SwiftLLMToolMacros" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RichNasz/SwiftLLMToolMacros";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		4247A5F82F6B40EA005DDD87 /* SwiftOpenResponsesDSL */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4247A5F72F6B40EA005DDD87 /* XCRemoteSwiftPackageReference "SwiftOpenResponsesDSL" */;
+			productName = SwiftOpenResponsesDSL;
+		};
+		4247A5FB2F6B4B53005DDD87 /* AgentGen */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AgentGen;
+		};
 		4260FEDF2F0C1AC900BB567F /* ProjectExchange */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ProjectExchange;
@@ -778,19 +799,15 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = SwiftChatCompletionsDSL;
 		};
-		42A85C2E2F57915700833656 /* SwiftChatCompletionsMacros */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 42A85C2D2F57915700833656 /* XCRemoteSwiftPackageReference "SwiftChatCompletionsMacros" */;
-			productName = SwiftChatCompletionsMacros;
-		};
 		42A85C312F5791D300833656 /* SwiftChatCompletionsDSL */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 42A85C302F5791D300833656 /* XCRemoteSwiftPackageReference "SwiftChatCompletionsDSL" */;
 			productName = SwiftChatCompletionsDSL;
 		};
-		42D7DAC22F69D3E300712BE5 /* ChatCompletionsAgentGen */ = {
+		42D7DBC42F6B23DB00712BE5 /* SwiftLLMToolMacros */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = ChatCompletionsAgentGen;
+			package = 42D7DBC32F6B23DB00712BE5 /* XCRemoteSwiftPackageReference "SwiftLLMToolMacros" */;
+			productName = SwiftLLMToolMacros;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

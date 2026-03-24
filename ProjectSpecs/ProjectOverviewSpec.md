@@ -46,15 +46,16 @@
 
 ## Component Architecture
 
-ContentGenerator is a monorepo containing three components:
+ContentGenerator is a monorepo containing four components:
 
 | Component | Type | Path | Purpose |
 |-----------|------|------|---------|
 | **ContentGenerator** | macOS App (Xcode) | `ContentGenerator/` | Main application — UI, project management, content generation workflows |
 | **LLMmanagement** | Swift Package (SPM) | `LLMmanagement/` | LLM connection management, OpenAI-compatible API client, streaming support |
 | **ProjectExchange** | Swift Package (SPM) | `ProjectExchange/` | JSON import/export with schema versioning, conflict resolution |
+| **AgentGen** | Swift Package (SPM) | `AgentGen/` | Agent-based content generation with pluggable inference backends (Apple Intelligence, Open Responses) |
 
-The app references LLMmanagement and ProjectExchange as local SPM packages. All three components maintain their own specification files in their respective `Specs/` directories.
+The app references LLMmanagement, ProjectExchange, and AgentGen as local SPM packages. All four components maintain their own specification files in their respective `Specs/` directories.
 
 ### Specification Hierarchy
 

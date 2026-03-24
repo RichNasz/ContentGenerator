@@ -14,7 +14,7 @@ import Foundation
 import LLMmanagement
 import UniformTypeIdentifiers
 import ProjectExchange
-import ChatCompletionsAgentGen
+import AgentGen
 
 /// Comprehensive project editing interface for the NavigationSplitView detail section
 struct ProjectDetailView: View {
@@ -24,7 +24,7 @@ struct ProjectDetailView: View {
     @Environment(ProjectExportService.self) private var exportService
     @Environment(ContentGenerationWindowState.self) private var windowState
     @Environment(ProjectContentGenerationWindowState.self) private var projectWindowState
-    @Environment(AgentGenerationWindowState.self) private var agentWindowState
+    @Environment(AgentGen.AgentGenerationWindowState.self) private var agentWindowState
     @Environment(\.openWindow) private var openWindow
 
     // Query for available LLM connections
@@ -513,7 +513,7 @@ struct ProjectDetailView: View {
     /// Opens the project agent generation window
     private func generateContentWithAgent() {
         let agentSections = specificationSections.map { section in
-            AgentSection(
+            AgentGen.AgentSection(
                 name: section.name,
                 content: section.content,
                 contentGenerationPrompt: section.contentGenerationPrompt,
