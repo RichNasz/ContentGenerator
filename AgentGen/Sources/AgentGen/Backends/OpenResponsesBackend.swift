@@ -44,7 +44,8 @@ public struct OpenResponsesBackend: AgentInferenceBackend {
             do {
                 let client = try LLMClient(
                     baseURL: config.apiURL,
-                    apiKey: config.apiKey
+                    apiKey: config.apiKey,
+                    sessionConfiguration: telemetry.makeSessionConfiguration()
                 )
 
                 let tracker = SectionReadTracker()

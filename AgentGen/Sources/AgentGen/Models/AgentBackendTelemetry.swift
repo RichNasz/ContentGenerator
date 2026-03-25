@@ -73,6 +73,15 @@ public protocol AgentBackendTelemetry: Sendable {
     /// before the stream begins. Implementations write this to an external sink
     /// (e.g., a temp file) since the full text exceeds signpost message size limits.
     func promptSent(systemPrompt: String, userMessage: String)
+
+    // MARK: - Session Configuration
+
+    /// Returns the `URLSessionConfiguration` to use when creating `LLMClient`.
+    ///
+    /// Instrumented implementations return a configuration with a logging `URLProtocol`
+    /// registered in `protocolClasses` so every HTTP POST body is captured to a temp file.
+    /// The no-op default returns `.default` with zero overhead.
+    func makeSessionConfiguration() -> URLSessionConfiguration
 }
 
 // MARK: - No-Op Implementation
@@ -100,4 +109,5 @@ public struct DisabledAgentTelemetry: AgentBackendTelemetry {
         cachedTokens: Int
     ) {}
     public func promptSent(systemPrompt: String, userMessage: String) {}
+    public func makeSessionConfiguration() -> URLSessionConfiguration { .default }
 }

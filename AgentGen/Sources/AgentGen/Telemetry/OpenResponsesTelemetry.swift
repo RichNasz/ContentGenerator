@@ -133,6 +133,14 @@ public final class OpenResponsesTelemetry: AgentBackendTelemetry, @unchecked Sen
         signposter.emitEvent("PromptSent", "\(url.path, privacy: .public)")
     }
 
+    // MARK: - Session Configuration
+
+    public func makeSessionConfiguration() -> URLSessionConfiguration {
+        let config = URLSessionConfiguration.default
+        config.protocolClasses = [AgentRequestLoggingURLProtocol.self]
+        return config
+    }
+
     // MARK: - Token Usage
 
     public func tokenUsageUpdated(
