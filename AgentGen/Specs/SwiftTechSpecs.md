@@ -93,22 +93,27 @@ public protocol AgentBackendTelemetry: Sendable {
     func contentDeltaReceived(characterCount: Int)
     func tokenUsageUpdated(iteration: Int, inputTokens: Int, outputTokens: Int,
                            reasoningTokens: Int, cachedTokens: Int)
+    func promptSent(systemPrompt: String, userMessage: String)
+    func makeSessionConfiguration() -> URLSessionConfiguration
 }
 ```
 - `Sendable`-constrained so the existential `any AgentBackendTelemetry` is safe to capture in backend `Task` closures
 - All methods called synchronously from the MainActor Task inside `run()` — no locking needed
 - Each backend type provides its own conforming implementation; uninstrumented backends use `DisabledAgentTelemetry`
+- `makeSessionConfiguration()` — returns the `URLSessionConfiguration` to pass to `LLMClient`; instrumented implementations register `AgentRequestLoggingURLProtocol` in `protocolClasses`; default returns `.default`
 
 ### DisabledAgentTelemetry (Models/AgentBackendTelemetry.swift)
 ```swift
 public struct DisabledAgentTelemetry: AgentBackendTelemetry {
     public init()
     // All methods are empty — optimizer eliminates all call sites
+    public func makeSessionConfiguration() -> URLSessionConfiguration { .default }
 }
 ```
 - Default telemetry for `OpenResponsesBackend` when user has disabled the toggle
 - Also used for `AppleIntelligenceBackend` and any future uninstrumented backend
 - Trivially `Sendable` as a struct with no stored state
+- `makeSessionConfiguration()` returns `.default` — zero overhead, no protocol class registration
 
 ### OpenResponsesTelemetry (Telemetry/OpenResponsesTelemetry.swift)
 ```swift
@@ -117,15 +122,32 @@ public final class OpenResponsesTelemetry: AgentBackendTelemetry, @unchecked Sen
     // OSSignposter subsystem: "com.rnaszcyn.ContentGenerator.AgentGen"
     // OSSignposter category: "OpenResponsesBackend"
     public init()
+    public func makeSessionConfiguration() -> URLSessionConfiguration
 }
 #endif
 ```
 - `#if os(macOS)` — matches `OpenResponsesBackend` guard
 - `@unchecked Sendable` — all methods run on the MainActor Task; compiler cannot see the confinement but it is semantically safe
 - Stores `OSSignpostIntervalState?` for the run, current iteration, and a `[String: OSSignpostIntervalState]` for active tool calls (keyed by `callId`)
-- Five Instruments tracks: `AgentRun` (interval), `Iteration` (interval), `ToolCall` (interval), `ContentDelta` (event), `TokenUsage` (event)
+- Seven Instruments tracks: `AgentRun` (interval), `Iteration` (interval), `ToolCall` (interval), `ContentDelta` (event), `TokenUsage` (event), `PromptSent` (event), `HTTPRequest` (event)
+- `makeSessionConfiguration()` returns a `URLSessionConfiguration.default` copy with `AgentRequestLoggingURLProtocol` in `protocolClasses` — registered only on the `LLMClient` session, never globally
 - All interpolated values use `privacy: .public` — appropriate for a developer profiling tool
 - Fresh instance created per run; do not share instances across runs
+
+### AgentRequestLoggingURLProtocol (Telemetry/AgentRequestLoggingURLProtocol.swift)
+```swift
+#if os(macOS)
+final class AgentRequestLoggingURLProtocol: URLProtocol, URLSessionDataDelegate, @unchecked Sendable {
+    // Internal; registered via URLSessionConfiguration.protocolClasses only
+}
+#endif
+```
+- Intercepts every HTTP POST on the session it is registered with (the `LLMClient` session when telemetry is enabled)
+- `canInit(with:)` uses a per-request property flag (`"AgentRequestLoggingHandled"`) to prevent infinite recursion when the internal forwarding session re-issues the request
+- `startLoading()`: writes `request.httpBody` (the full JSON POST body) to `/tmp/agentgen_http_post_<timestamp>.json`; emits `"HTTPRequest"` signpost event with the file path; forwards the request via a delegate-based `URLSessionDataTask` on an internal `.default` session
+- SSE streaming is preserved: `URLSessionDataDelegate` methods (`didReceive response:`, `didReceive data:`, `didCompleteWithError:`) forward each chunk immediately via `URLProtocolClient` so the upstream `AsyncBytes.lines` loop receives data incrementally
+- `@unchecked Sendable` — required because Swift 6 default MainActor isolation infers `Sendable` on final classes, but the superclass (`URLProtocol` → `NSObject`) constraint only allows direct `NSObject` inheritance for `Sendable` classes; `@unchecked` is safe because there is no cross-thread mutable state
+- Has its own `static OSSignposter` instance — does not depend on `OpenResponsesTelemetry`
 
 ### AgentSection (Models/AgentSection.swift)
 ```swift
@@ -210,7 +232,8 @@ public struct OpenResponsesBackend: AgentInferenceBackend {
 - `#if os(macOS)` guarded
 - Uses `AsyncThrowingStream.makeStream()` + `Task { @MainActor in }` (same pattern as Apple Intelligence)
 - All helper methods are `private static`
-- Creates `LLMClient` and `ToolSession` with `makeAgentTools()` output
+- Creates `LLMClient` with `telemetry.makeSessionConfiguration()` as `sessionConfiguration` — enables HTTP POST capture when telemetry is active
+- Creates `ToolSession` with `makeAgentTools()` output
 - Formats sections as XML via `XMLSpecFormatter` with double manifest listing
 - Passes `ResponseConfigParameter` array: `RequestTimeout`, `ResourceTimeout`, `Instructions`, optional `Reasoning`
 - Transforms `ToolSessionEvent` → `AgentEvent` in the stream loop
@@ -218,7 +241,7 @@ public struct OpenResponsesBackend: AgentInferenceBackend {
 - Extracts `<think>...</think>` blocks during streaming via `extractCompletedThinkBlocks()`
 - Handles `LLMError` with formatted messages
 - Emits telemetry at every LLM interaction point via `any AgentBackendTelemetry` (pre-captured before `Task` as `let telemetry = self.telemetry`)
-- Telemetry call points: `runBegan` (before stream loop), `iterationBegan/iterationEnded` (on `.iterationStarted`), `toolCallBegan/toolCallEnded` (on tool events), `tokenUsageUpdated` (on `.usageUpdate` — bind `let iteration` not `_`), `contentDeltaReceived` (in `processLLMEvent` on `.contentPartDelta`), `iterationEnded` + `runEnded` (after loop), `runFailed` (in catch blocks)
+- Telemetry call points: `promptSent` (before stream begins), `runBegan` (before stream loop), `iterationBegan/iterationEnded` (on `.iterationStarted`), `toolCallBegan/toolCallEnded` (on tool events), `tokenUsageUpdated` (on `.usageUpdate` — bind `let iteration` not `_`), `contentDeltaReceived` (in `processLLMEvent` on `.contentPartDelta`), `iterationEnded` + `runEnded` (after loop), `runFailed` (in catch blocks)
 - `processLLMEvent` static function signature includes `telemetry: any AgentBackendTelemetry` parameter
 
 ### Concurrency Pattern for Backends
@@ -365,7 +388,8 @@ Sources/AgentGen/
 │   ├── AppleIntelligenceBackend.swift
 │   └── OpenResponsesBackend.swift
 ├── Telemetry/
-│   └── OpenResponsesTelemetry.swift  (#if os(macOS), OSSignpost implementation)
+│   ├── OpenResponsesTelemetry.swift           (#if os(macOS), OSSignpost implementation)
+│   └── AgentRequestLoggingURLProtocol.swift   (#if os(macOS), URLProtocol HTTP POST capture)
 ├── Views/
 │   ├── ProjectAgentGenerationWindow.swift
 │   └── ActivityLogView.swift
@@ -375,4 +399,4 @@ Sources/AgentGen/
 ```
 
 ---
-**Last Updated:** 2026-03-25 (added AgentBackendTelemetry protocol, DisabledAgentTelemetry, OpenResponsesTelemetry; updated OpenResponsesBackend init to accept telemetry; documented telemetry call points in backend and toggle in view; added Telemetry/ directory to file structure)
+**Last Updated:** 2026-03-25 (added AgentRequestLoggingURLProtocol URLProtocol subclass for HTTP POST body capture; added makeSessionConfiguration() to AgentBackendTelemetry protocol and all implementations; updated OpenResponsesBackend to pass session config to LLMClient; updated OpenResponsesTelemetry to seven Instruments tracks)

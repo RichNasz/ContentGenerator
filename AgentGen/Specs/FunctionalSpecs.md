@@ -42,13 +42,16 @@
 
 ### Instruments Telemetry
 - **Opt-in**: The user toggles telemetry on/off in the agent window (cloud/local Open Responses connections only). The preference persists across sessions.
-- **Scope**: Every Open Responses LLM interaction emits OSSignpost data — run intervals, per-iteration intervals, per-tool-call intervals, streaming content delta events, and token usage events.
+- **Scope**: Every Open Responses LLM interaction emits OSSignpost data — run intervals, per-iteration intervals, per-tool-call intervals, streaming content delta events, token usage events, prompt captures, and full HTTP POST body captures.
 - **Instruments tracks** (visible in the os_signpost template, subsystem `com.rnaszcyn.ContentGenerator.AgentGen`):
   - `AgentRun`: interval spanning the full generation run
   - `Iteration`: interval per LLM iteration
   - `ToolCall`: interval per tool call
   - `ContentDelta`: point event per streamed content delta
   - `TokenUsage`: point event per usage update
+  - `PromptSent`: point event with path to temp file containing the system prompt and user message
+  - `HTTPRequest`: point event with path to temp file containing the complete wire-format JSON POST body (model, instructions, input, tools array with schemas, reasoning effort, `stream: true`, timeouts, `previous_response_id`, etc.) — one event per LLM iteration
+- **HTTP POST capture**: The full serialized JSON body is intercepted at the transport layer and written to a temp file (e.g., `/tmp/agentgen_http_post_<timestamp>.json`). This captures fields invisible to higher-level telemetry, such as tool JSON schemas.
 - **Backend isolation**: Telemetry is emitted by the backend, not the view. The view only creates and passes the telemetry object.
 - **Other backends**: Apple Intelligence and any future backends not yet instrumented use a no-op telemetry implementation with zero overhead.
 
@@ -122,4 +125,4 @@
 - `"project-agent-generation-responses"`
 
 ---
-**Last Updated:** 2026-03-25 (added Instruments Telemetry: OSSignpost-based opt-in telemetry for Open Responses backend, telemetry toggle in Column 2, five Instruments tracks)
+**Last Updated:** 2026-03-25 (added HTTPRequest OSSignpost event: captures full wire-format HTTP POST body per LLM iteration to temp file; added PromptSent event description)

@@ -76,6 +76,24 @@ func run(...) -> AsyncThrowingStream<AgentEvent, any Error> {
 - **Files Affected:** `Backends/AppleIntelligenceBackend.swift`, `Backends/OpenResponsesBackend.swift`
 - **Last Updated:** 2026-03-24
 
+### ERR-COMPILE-004: 'Sendable' class cannot inherit from another class other than 'NSObject'
+
+- **Error ID:** ERR-COMPILE-004
+- **Category:** CONCURRENCY
+- **Severity:** Build-breaking
+- **Frequency:** Encountered when subclassing any NSObject subclass (e.g., URLProtocol) under Swift 6 default MainActor isolation
+- **Context:** Creating a `final class` subclass of `URLProtocol` (which itself subclasses `NSObject`) for HTTP request interception
+- **Error Message:** `'Sendable' class 'AgentRequestLoggingURLProtocol' cannot inherit from another class other than 'NSObject'`
+- **Root Cause:** Swift 6 with default MainActor isolation implicitly infers `Sendable` on `final` classes. The Swift compiler enforces that `Sendable` classes may only directly inherit from `NSObject` — not from intermediate subclasses of `NSObject` like `URLProtocol`. The compile-time check cannot be satisfied by reorganizing the inheritance hierarchy, since `URLProtocol` is a required superclass.
+- **Proven Fix:** Add `@unchecked Sendable` to the class declaration to suppress the automatic conformance check:
+  ```swift
+  final class AgentRequestLoggingURLProtocol: URLProtocol, URLSessionDataDelegate, @unchecked Sendable {
+  ```
+  This is semantically safe when the class has no cross-thread mutable state. `URLProtocol` instances are called from the URL loading system on its own queue; the `forwardingSession` delegate callbacks arrive on the delegate queue; neither crosses actor boundaries in a way that would cause data races.
+- **Prevention:** When subclassing any `NSObject` subclass (not `NSObject` directly) in a Swift 6 codebase with default MainActor isolation, expect this error. Always add `@unchecked Sendable` and verify that stored mutable state does not escape across thread/actor boundaries.
+- **Files Affected:** `Telemetry/AgentRequestLoggingURLProtocol.swift`
+- **Last Updated:** 2026-03-25
+
 ---
 
 ## Runtime Errors
@@ -101,6 +119,6 @@ func run(...) -> AsyncThrowingStream<AgentEvent, any Error> {
 
 ---
 
-**Last Updated:** 2026-03-24
+**Last Updated:** 2026-03-25
 **Swift Version:** 6.2 with Default MainActor Isolation
 **Package:** AgentGen
