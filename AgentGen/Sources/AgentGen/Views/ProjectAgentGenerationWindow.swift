@@ -48,6 +48,7 @@ public struct ProjectAgentGenerationWindow: View {
     @State private var toolCallCounts: [String: Int] = [:]
     @State private var selectedReasoningEffort: ReasoningEffort? = .medium
     @State private var activeTask: Task<Void, Never>?
+    @AppStorage("agentTelemetryEnabled") private var isTelemetryEnabled: Bool = false
 
     public init(
         projectName: String,
@@ -253,6 +254,15 @@ public struct ProjectAgentGenerationWindow: View {
                     .disabled(isRunning)
                 }
                 .padding(.horizontal)
+            }
+
+            // Instruments Telemetry Toggle (cloud connections only)
+            if isCloudBackendSelected {
+                Toggle("Enable Instruments Telemetry", isOn: $isTelemetryEnabled)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .disabled(isRunning)
+                    .padding(.horizontal)
             }
 
             // Instructions
@@ -500,7 +510,10 @@ public struct ProjectAgentGenerationWindow: View {
                 requestTimeoutSeconds: conn.requestTimeoutSeconds,
                 reasoningEffort: selectedReasoningEffort
             )
-            return OpenResponsesBackend(config: config)
+            let telemetry: any AgentBackendTelemetry = isTelemetryEnabled
+                ? OpenResponsesTelemetry()
+                : DisabledAgentTelemetry()
+            return OpenResponsesBackend(config: config, telemetry: telemetry)
         }
     }
 

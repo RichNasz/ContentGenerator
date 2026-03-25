@@ -80,6 +80,53 @@ public enum AgentBackend: Hashable {
 ```
 - Picker selection type — `cloudConnection` carries the `LLMConnection.id`
 
+### AgentBackendTelemetry (Models/AgentBackendTelemetry.swift)
+```swift
+public protocol AgentBackendTelemetry: Sendable {
+    func runBegan(projectName: String, model: String, maxIterations: Int)
+    func runEnded(totalIterations: Int, totalInputTokens: Int, totalOutputTokens: Int)
+    func runFailed(reason: String)
+    func iterationBegan(_ n: Int)
+    func iterationEnded(_ n: Int)
+    func toolCallBegan(name: String, callId: String)
+    func toolCallEnded(name: String, callId: String, duration: Duration)
+    func contentDeltaReceived(characterCount: Int)
+    func tokenUsageUpdated(iteration: Int, inputTokens: Int, outputTokens: Int,
+                           reasoningTokens: Int, cachedTokens: Int)
+}
+```
+- `Sendable`-constrained so the existential `any AgentBackendTelemetry` is safe to capture in backend `Task` closures
+- All methods called synchronously from the MainActor Task inside `run()` — no locking needed
+- Each backend type provides its own conforming implementation; uninstrumented backends use `DisabledAgentTelemetry`
+
+### DisabledAgentTelemetry (Models/AgentBackendTelemetry.swift)
+```swift
+public struct DisabledAgentTelemetry: AgentBackendTelemetry {
+    public init()
+    // All methods are empty — optimizer eliminates all call sites
+}
+```
+- Default telemetry for `OpenResponsesBackend` when user has disabled the toggle
+- Also used for `AppleIntelligenceBackend` and any future uninstrumented backend
+- Trivially `Sendable` as a struct with no stored state
+
+### OpenResponsesTelemetry (Telemetry/OpenResponsesTelemetry.swift)
+```swift
+#if os(macOS)
+public final class OpenResponsesTelemetry: AgentBackendTelemetry, @unchecked Sendable {
+    // OSSignposter subsystem: "com.rnaszcyn.ContentGenerator.AgentGen"
+    // OSSignposter category: "OpenResponsesBackend"
+    public init()
+}
+#endif
+```
+- `#if os(macOS)` — matches `OpenResponsesBackend` guard
+- `@unchecked Sendable` — all methods run on the MainActor Task; compiler cannot see the confinement but it is semantically safe
+- Stores `OSSignpostIntervalState?` for the run, current iteration, and a `[String: OSSignpostIntervalState]` for active tool calls (keyed by `callId`)
+- Five Instruments tracks: `AgentRun` (interval), `Iteration` (interval), `ToolCall` (interval), `ContentDelta` (event), `TokenUsage` (event)
+- All interpolated values use `privacy: .public` — appropriate for a developer profiling tool
+- Fresh instance created per run; do not share instances across runs
+
 ### AgentSection (Models/AgentSection.swift)
 ```swift
 public struct AgentSection: Sendable {
@@ -155,7 +202,8 @@ public struct AppleIntelligenceBackend: AgentInferenceBackend {
 ### OpenResponsesBackend (Backends/OpenResponsesBackend.swift)
 ```swift
 public struct OpenResponsesBackend: AgentInferenceBackend {
-    public init(config: CloudConnectionConfig)
+    public init(config: CloudConnectionConfig,
+                telemetry: any AgentBackendTelemetry = DisabledAgentTelemetry())
     public func run(...) -> AsyncThrowingStream<AgentEvent, any Error>
 }
 ```
@@ -169,6 +217,9 @@ public struct OpenResponsesBackend: AgentInferenceBackend {
 - Accumulates token usage across iterations via local counters
 - Extracts `<think>...</think>` blocks during streaming via `extractCompletedThinkBlocks()`
 - Handles `LLMError` with formatted messages
+- Emits telemetry at every LLM interaction point via `any AgentBackendTelemetry` (pre-captured before `Task` as `let telemetry = self.telemetry`)
+- Telemetry call points: `runBegan` (before stream loop), `iterationBegan/iterationEnded` (on `.iterationStarted`), `toolCallBegan/toolCallEnded` (on tool events), `tokenUsageUpdated` (on `.usageUpdate` — bind `let iteration` not `_`), `contentDeltaReceived` (in `processLLMEvent` on `.contentPartDelta`), `iterationEnded` + `runEnded` (after loop), `runFailed` (in catch blocks)
+- `processLLMEvent` static function signature includes `telemetry: any AgentBackendTelemetry` parameter
 
 ### Concurrency Pattern for Backends
 Both backends use the same pattern to avoid Swift 6 `sending` data race errors:
@@ -237,6 +288,7 @@ struct ActivityLogEntry: Identifiable {
 @State private var toolCallCounts: [String: Int] = [:]
 @State private var selectedReasoningEffort: ReasoningEffort? = .medium
 @State private var activeTask: Task<Void, Never>?
+@AppStorage("agentTelemetryEnabled") private var isTelemetryEnabled: Bool = false
 ```
 
 **Key computed properties:**
@@ -249,7 +301,7 @@ struct ActivityLogEntry: Identifiable {
 
 **Backend factory (`makeBackend(for:)`):**
 - `.appleIntelligence` → `AppleIntelligenceBackend()`
-- `.cloudConnection(id)` → resolves `LLMConnection`, builds `CloudConnectionConfig`, returns `OpenResponsesBackend(config:)`
+- `.cloudConnection(id)` → resolves `LLMConnection`, builds `CloudConnectionConfig`, returns `OpenResponsesBackend(config:telemetry:)` — passes `OpenResponsesTelemetry()` when `isTelemetryEnabled`, otherwise `DisabledAgentTelemetry()`
 - Invalid config → `FailingBackend(message:)`
 
 **Event handling (`handleEvent(_:)`):**
@@ -304,6 +356,7 @@ Sources/AgentGen/
 │   ├── AgentBackend.swift
 │   ├── AgentEvent.swift              (AgentEvent, TokenUsageSnapshot, CloudConnectionConfig)
 │   ├── AgentInferenceBackend.swift    (protocol)
+│   ├── AgentBackendTelemetry.swift    (protocol + DisabledAgentTelemetry)
 │   ├── AgentGenerationWindowState.swift
 │   ├── SectionReadTracker.swift
 │   ├── ProjectSpecTools.swift        (Open Responses tools)
@@ -311,6 +364,8 @@ Sources/AgentGen/
 ├── Backends/
 │   ├── AppleIntelligenceBackend.swift
 │   └── OpenResponsesBackend.swift
+├── Telemetry/
+│   └── OpenResponsesTelemetry.swift  (#if os(macOS), OSSignpost implementation)
 ├── Views/
 │   ├── ProjectAgentGenerationWindow.swift
 │   └── ActivityLogView.swift
@@ -320,4 +375,4 @@ Sources/AgentGen/
 ```
 
 ---
-**Last Updated:** 2026-03-24 (renamed to AgentGen, multi-backend architecture with AgentInferenceBackend protocol, AppleIntelligenceBackend, OpenResponsesBackend, unified ActivityLogView, tools list with call counts, connection filtering, local/cloud grouping, AsyncThrowingStream.makeStream concurrency pattern)
+**Last Updated:** 2026-03-25 (added AgentBackendTelemetry protocol, DisabledAgentTelemetry, OpenResponsesTelemetry; updated OpenResponsesBackend init to accept telemetry; documented telemetry call points in backend and toggle in view; added Telemetry/ directory to file structure)

@@ -40,6 +40,18 @@
 - Section reads reported from `SectionReadTracker` after execution
 - Available only when `SystemLanguageModel.default.isAvailable` is true
 
+### Instruments Telemetry
+- **Opt-in**: The user toggles telemetry on/off in the agent window (cloud/local Open Responses connections only). The preference persists across sessions.
+- **Scope**: Every Open Responses LLM interaction emits OSSignpost data — run intervals, per-iteration intervals, per-tool-call intervals, streaming content delta events, and token usage events.
+- **Instruments tracks** (visible in the os_signpost template, subsystem `com.rnaszcyn.ContentGenerator.AgentGen`):
+  - `AgentRun`: interval spanning the full generation run
+  - `Iteration`: interval per LLM iteration
+  - `ToolCall`: interval per tool call
+  - `ContentDelta`: point event per streamed content delta
+  - `TokenUsage`: point event per usage update
+- **Backend isolation**: Telemetry is emitted by the backend, not the view. The view only creates and passes the telemetry object.
+- **Other backends**: Apple Intelligence and any future backends not yet instrumented use a no-op telemetry implementation with zero overhead.
+
 ### Open Responses Backend
 - **Streaming Execution**: Uses `ToolSession.stream()` yielding `ToolSessionEvent` values in real time
 - **Conversation Continuity**: Uses `previous_response_id` between tool-calling iterations
@@ -65,6 +77,7 @@
 **Column 2** (Agent Controls):
 - Model picker (On-Device / Cloud Connections sections)
 - Reasoning effort picker (conditional on cloud/local Open Responses selection, disabled during run)
+- Instruments Telemetry toggle (conditional on cloud/local Open Responses selection, disabled during run; persists across sessions via UserDefaults)
 - Editable instructions field (defaults to a generic task request, not the system prompt)
 - "Run Agent" button
 - Token usage summary (conditional on Open Responses selection, persistent during/after run)
@@ -109,4 +122,4 @@
 - `"project-agent-generation-responses"`
 
 ---
-**Last Updated:** 2026-03-24 (renamed to AgentGen, multi-backend architecture, unified activity log, tools list with call counts, connection filtering by endpoint type, local/cloud grouping)
+**Last Updated:** 2026-03-25 (added Instruments Telemetry: OSSignpost-based opt-in telemetry for Open Responses backend, telemetry toggle in Column 2, five Instruments tracks)

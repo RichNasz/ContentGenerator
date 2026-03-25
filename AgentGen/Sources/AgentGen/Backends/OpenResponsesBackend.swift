@@ -20,9 +20,14 @@ import SwiftLLMToolMacros
 public struct OpenResponsesBackend: AgentInferenceBackend {
 
     private let config: CloudConnectionConfig
+    private let telemetry: any AgentBackendTelemetry
 
-    public init(config: CloudConnectionConfig) {
+    public init(
+        config: CloudConnectionConfig,
+        telemetry: any AgentBackendTelemetry = DisabledAgentTelemetry()
+    ) {
         self.config = config
+        self.telemetry = telemetry
     }
 
     public func run(
@@ -33,6 +38,7 @@ public struct OpenResponsesBackend: AgentInferenceBackend {
     ) -> AsyncThrowingStream<AgentEvent, any Error> {
         let (stream, continuation) = AsyncThrowingStream.makeStream(of: AgentEvent.self)
         let config = self.config
+        let telemetry = self.telemetry
 
         Task { @MainActor in
             do {
@@ -53,10 +59,11 @@ public struct OpenResponsesBackend: AgentInferenceBackend {
                 )
 
                 let enabledSections = sections.filter(\.isEnabled)
+                let maxIterations = enabledSections.count + 5
                 let session = ToolSession(
                     client: client,
                     tools: toolDefs,
-                    maxIterations: enabledSections.count + 5,
+                    maxIterations: maxIterations,
                     handlers: handlers
                 )
 
@@ -75,14 +82,17 @@ public struct OpenResponsesBackend: AgentInferenceBackend {
 
                 let validRequestTimeout = max(10, min(900, TimeInterval(config.requestTimeoutSeconds)))
                 let validResourceTimeout = max(30, min(3600, TimeInterval(config.requestTimeoutSeconds)))
+                let builtSystemPrompt = Self.buildSystemPrompt(projectName: projectName, systemPrompt: systemPrompt)
                 var configParams: [ResponseConfigParameter] = [
                     try RequestTimeout(validRequestTimeout),
                     try ResourceTimeout(validResourceTimeout),
-                    try Instructions(Self.buildSystemPrompt(projectName: projectName, systemPrompt: systemPrompt)),
+                    try Instructions(builtSystemPrompt),
                 ]
                 if let effort = config.reasoningEffort {
                     configParams.append(Reasoning(effort: effort, summary: .auto))
                 }
+
+                telemetry.promptSent(systemPrompt: builtSystemPrompt, userMessage: userMessage)
 
                 let toolStream = session.stream(
                     model: config.model,
@@ -99,22 +109,32 @@ public struct OpenResponsesBackend: AgentInferenceBackend {
                 var iterationCount = 0
                 var generatedContent = ""
 
+                telemetry.runBegan(
+                    projectName: projectName,
+                    model: config.model,
+                    maxIterations: maxIterations
+                )
+
                 for try await event in toolStream {
                     guard !Task.isCancelled else { break }
 
                     switch event {
                     case .iterationStarted(let n):
+                        if n > 1 { telemetry.iterationEnded(n - 1) }
+                        telemetry.iterationBegan(n)
                         Self.extractCompletedThinkBlocks(from: &generatedContent, continuation: continuation)
                         iterationCount = n
                         continuation.yield(.statusUpdate("Thinking (iteration \(n))…"))
                         generatedContent = ""
 
                     case .toolCallStarted(let callId, let name, let arguments):
+                        telemetry.toolCallBegan(name: name, callId: callId)
                         continuation.yield(.activeToolChanged(name))
                         continuation.yield(.statusUpdate("Calling \(name)…"))
                         continuation.yield(.toolCallStarted(callId: callId, name: name, arguments: arguments))
 
                     case .toolCallCompleted(let callId, let name, let output, let duration):
+                        telemetry.toolCallEnded(name: name, callId: callId, duration: duration)
                         continuation.yield(.activeToolChanged(nil))
                         continuation.yield(.statusUpdate("Tool \(name) finished. Waiting for model…"))
                         continuation.yield(.toolCallCompleted(callId: callId, name: name, result: output, duration: duration))
@@ -127,13 +147,25 @@ public struct OpenResponsesBackend: AgentInferenceBackend {
                         }
 
                     case .llm(let streamEvent):
-                        Self.processLLMEvent(streamEvent, generatedContent: &generatedContent, continuation: continuation)
+                        Self.processLLMEvent(
+                            streamEvent,
+                            generatedContent: &generatedContent,
+                            continuation: continuation,
+                            telemetry: telemetry
+                        )
 
-                    case .usageUpdate(let usage, _):
+                    case .usageUpdate(let usage, let iteration):
                         cumulativeInput += usage.inputTokens
                         cumulativeOutput += usage.outputTokens
                         cumulativeReasoning += usage.outputTokensDetails?.reasoningTokens ?? 0
                         cumulativeCached += usage.inputTokensDetails?.cachedTokens ?? 0
+                        telemetry.tokenUsageUpdated(
+                            iteration: iteration,
+                            inputTokens: usage.inputTokens,
+                            outputTokens: usage.outputTokens,
+                            reasoningTokens: usage.outputTokensDetails?.reasoningTokens ?? 0,
+                            cachedTokens: usage.inputTokensDetails?.cachedTokens ?? 0
+                        )
                         continuation.yield(.tokenUsage(TokenUsageSnapshot(
                             input: cumulativeInput,
                             output: cumulativeOutput,
@@ -142,6 +174,13 @@ public struct OpenResponsesBackend: AgentInferenceBackend {
                         )))
                     }
                 }
+
+                if iterationCount > 0 { telemetry.iterationEnded(iterationCount) }
+                telemetry.runEnded(
+                    totalIterations: iterationCount,
+                    totalInputTokens: cumulativeInput,
+                    totalOutputTokens: cumulativeOutput
+                )
 
                 continuation.yield(.activeToolChanged(nil))
                 continuation.yield(.statusUpdate(""))
@@ -176,9 +215,11 @@ public struct OpenResponsesBackend: AgentInferenceBackend {
                 continuation.finish()
 
             } catch let error as LLMError {
+                telemetry.runFailed(reason: Self.formatLLMError(error))
                 continuation.yield(.failed(Self.formatLLMError(error)))
                 continuation.finish()
             } catch {
+                telemetry.runFailed(reason: error.localizedDescription)
                 continuation.yield(.failed(error.localizedDescription))
                 continuation.finish()
             }
@@ -192,11 +233,13 @@ public struct OpenResponsesBackend: AgentInferenceBackend {
     private static func processLLMEvent(
         _ streamEvent: StreamEvent,
         generatedContent: inout String,
-        continuation: AsyncThrowingStream<AgentEvent, any Error>.Continuation
+        continuation: AsyncThrowingStream<AgentEvent, any Error>.Continuation,
+        telemetry: any AgentBackendTelemetry
     ) {
         switch streamEvent {
         case .contentPartDelta(let delta, _, _):
             generatedContent += delta
+            telemetry.contentDeltaReceived(characterCount: delta.count)
             continuation.yield(.contentDelta(delta))
             extractCompletedThinkBlocks(from: &generatedContent, continuation: continuation)
 
