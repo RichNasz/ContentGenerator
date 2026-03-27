@@ -83,6 +83,21 @@ struct ProjectContentGenerationWindow: View {
         llmConnections.filter { $0.isConfigured }
     }
 
+    private var chatCompletionsConnections: [LLMConnection] {
+        configuredLLMConnections.filter { $0.endpointType == .chatCompletions }
+    }
+
+    private var responsesConnections: [LLMConnection] {
+        configuredLLMConnections.filter { $0.endpointType == .responses }
+    }
+
+    private func isLocalConnection(_ connection: LLMConnection) -> Bool {
+        guard let components = URLComponents(string: connection.baseUrl),
+              let host = components.host?.lowercased() else { return false }
+        return host == "localhost" || host == "127.0.0.1"
+            || host == "0.0.0.0" || host == "::1" || host == "[::1]"
+    }
+
     /// Validates whether the currently selected LLM connection is valid
     private var isSelectedLLMValid: Bool {
         guard let selectedId = selectedLLMId else {
@@ -177,8 +192,23 @@ struct ProjectContentGenerationWindow: View {
 
                 Picker("Select LLM", selection: $selectedLLMId) {
                     Text("Select Model").tag(nil as UUID?)
-                    ForEach(configuredLLMConnections, id: \.id) { connection in
-                        Text(connection.name).tag(connection.id as UUID?)
+
+                    if !chatCompletionsConnections.isEmpty {
+                        Section("Chat Completions") {
+                            ForEach(chatCompletionsConnections, id: \.id) { connection in
+                                Label(connection.name, systemImage: isLocalConnection(connection) ? "network" : "cloud")
+                                    .tag(connection.id as UUID?)
+                            }
+                        }
+                    }
+
+                    if !responsesConnections.isEmpty {
+                        Section("Responses") {
+                            ForEach(responsesConnections, id: \.id) { connection in
+                                Label(connection.name, systemImage: isLocalConnection(connection) ? "network" : "cloud")
+                                    .tag(connection.id as UUID?)
+                            }
+                        }
                     }
                 }
                 .pickerStyle(.menu)
