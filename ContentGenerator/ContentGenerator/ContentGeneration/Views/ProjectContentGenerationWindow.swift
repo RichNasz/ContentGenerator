@@ -44,15 +44,11 @@ struct ProjectContentGenerationWindow: View {
 
             // Main content area
             HSplitView {
-                // Column 1: Project Overview (readonly)
-                projectOverviewColumn
-                    .frame(minWidth: 300, idealWidth: 400, maxWidth: 500)
-
-                // Column 2: LLM Controls
+                // Column 1: LLM Controls
                 llmControlsColumn
                     .frame(minWidth: 350, idealWidth: 400)
 
-                // Column 3: Generated Content
+                // Column 2: Generated Content
                 generatedContentColumn
                     .frame(minWidth: 400, idealWidth: 500)
             }
@@ -63,7 +59,7 @@ struct ProjectContentGenerationWindow: View {
             // Footer with action buttons
             footerSection
         }
-        .frame(minWidth: 1000, idealWidth: 1400, idealHeight: 700)
+        .frame(minWidth: 700, idealWidth: 1200, idealHeight: 700)
         .task {
             initializeLLMSelection()
         }
@@ -134,49 +130,6 @@ struct ProjectContentGenerationWindow: View {
         .background(.regularMaterial)
     }
 
-    // MARK: - Project Overview Column
-
-    private var projectOverviewColumn: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Project Overview")
-                    .font(.headline)
-
-                Text("System Prompt:")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                if let systemPrompt = projectSystemPrompt, !systemPrompt.isEmpty {
-                    Text(systemPrompt)
-                        .font(.body)
-                        .padding(8)
-                        .background(Color(nsColor: .controlBackgroundColor))
-                        .cornerRadius(6)
-                } else {
-                    Text("No system prompt configured")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .italic()
-                        .padding(8)
-                        .background(Color(nsColor: .controlBackgroundColor))
-                        .cornerRadius(6)
-                }
-
-                Text("Project Specification:")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Text(projectMarkdownContent.isEmpty ? "No specification content" : projectMarkdownContent)
-                    .font(.body)
-                    .padding(8)
-                    .background(Color(nsColor: .controlBackgroundColor))
-                    .cornerRadius(6)
-                    .textSelection(.enabled)
-            }
-            .padding()
-        }
-    }
-
     // MARK: - LLM Controls Column
 
     private var llmControlsColumn: some View {
@@ -196,7 +149,7 @@ struct ProjectContentGenerationWindow: View {
                     if !chatCompletionsConnections.isEmpty {
                         Section("Chat Completions") {
                             ForEach(chatCompletionsConnections, id: \.id) { connection in
-                                Label(connection.name, systemImage: isLocalConnection(connection) ? "network" : "cloud")
+                                Label(connection.name, systemImage: isLocalConnection(connection) ? "house.fill" : "cloud")
                                     .tag(connection.id as UUID?)
                             }
                         }
@@ -205,7 +158,7 @@ struct ProjectContentGenerationWindow: View {
                     if !responsesConnections.isEmpty {
                         Section("Responses") {
                             ForEach(responsesConnections, id: \.id) { connection in
-                                Label(connection.name, systemImage: isLocalConnection(connection) ? "network" : "cloud")
+                                Label(connection.name, systemImage: isLocalConnection(connection) ? "house.fill" : "cloud")
                                     .tag(connection.id as UUID?)
                             }
                         }

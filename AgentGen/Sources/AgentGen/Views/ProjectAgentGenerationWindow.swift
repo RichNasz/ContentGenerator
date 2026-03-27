@@ -135,7 +135,7 @@ public struct ProjectAgentGenerationWindow: View {
                             Text("Apple Intelligence (Unavailable)").tag(nil as AgentBackend?)
                         }
                         ForEach(localLLMConnections, id: \.id) { connection in
-                            Label(connection.name, systemImage: "network")
+                            Label(connection.name, systemImage: "house.fill")
                                 .tag(AgentBackend.cloudConnection(connection.id) as AgentBackend?)
                         }
                     }

@@ -223,7 +223,7 @@ struct SectionContentGenerationWindow: View {
                     if !chatCompletionsConnections.isEmpty {
                         Section("Chat Completions") {
                             ForEach(chatCompletionsConnections, id: \.id) { connection in
-                                Label(connection.name, systemImage: isLocalConnection(connection) ? "network" : "cloud")
+                                Label(connection.name, systemImage: isLocalConnection(connection) ? "house.fill" : "cloud")
                                     .tag(connection.id as UUID?)
                             }
                         }
@@ -232,7 +232,7 @@ struct SectionContentGenerationWindow: View {
                     if !responsesConnections.isEmpty {
                         Section("Responses") {
                             ForEach(responsesConnections, id: \.id) { connection in
-                                Label(connection.name, systemImage: isLocalConnection(connection) ? "network" : "cloud")
+                                Label(connection.name, systemImage: isLocalConnection(connection) ? "house.fill" : "cloud")
                                     .tag(connection.id as UUID?)
                             }
                         }
