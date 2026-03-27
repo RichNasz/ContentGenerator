@@ -43,7 +43,7 @@ ContentGenerator uses a `.cgspecs` bundle format to store all project data and s
 ### Bundle Contents
 
 - The SwiftData store containing all projects, settings, and LLM connections
-- Project-related files organized within the bundle directory structure
+- Project-related files (including file attachments) organized within the bundle directory structure
 
 ---
 
@@ -66,6 +66,7 @@ ContentGenerator uses a `.cgspecs` bundle format to store all project data and s
 - **Context Menu:** Right-click (macOS) reveals Delete option
 - **Confirmation Required:** Destructive actions require user confirmation to prevent accidental deletion
 - **Selection Handling:** If the selected project is deleted, selection is automatically cleared
+- **Bundle Cleanup:** Each deleted project's `projects/<uuid>/` bundle directory is automatically removed from disk after the database deletion is committed, preventing orphaned directories from accumulating
 
 ### Project Organization
 
@@ -113,7 +114,7 @@ Each specification section has the following properties:
 
 - **Add Section:** Create new sections within a project
 - **Edit Section:** Modify any section property
-- **Reorder Sections:** Move sections up/down using dedicated controls
+- **Reorder Sections:** Move sections up/down using dedicated controls, or drag sections to a new position
 - **Delete Section:** Remove sections from the project
 - **Toggle Section:** Enable or disable sections without deleting them
 
@@ -152,8 +153,7 @@ ContentGenerator supports two OpenAI-compatible API endpoint types:
 - **Chat Completions:** Standard conversational endpoint (`/v1/chat/completions`)
   - Default for new connections
   - Supports all standard Chat Completions parameters
-- **Responses:** Advanced endpoint with structured outputs (`/v1/responses`)
-  - For applications requiring specific output formats
+- **Responses:** Advanced endpoint with structured outputs and reasoning (`/v1/responses`)
 
 ### Tested Providers
 
@@ -188,6 +188,9 @@ ContentGenerator supports two OpenAI-compatible API endpoint types:
 - **Dedicated Interface:** Separate windows for content generation workflow
 - **Real-Time Preview:** See generated content as it streams from the LLM
 - **Iterative Refinement:** Regenerate with adjusted prompts until satisfactory
+- **Window Layouts:**
+  - `SectionContentGenerationWindow` uses a three-column layout: (1) current section content read-only, (2) LLM controls and prompt editing, (3) generated content display
+  - `ProjectContentGenerationWindow` uses a two-column layout: (1) LLM controls, (2) generated content display
 
 ### Streaming Display
 
@@ -207,12 +210,91 @@ ContentGenerator supports two OpenAI-compatible API endpoint types:
 - **Error Recovery:** Graceful handling of generation failures
 - **User-Friendly Messages:** Clear error descriptions for troubleshooting
 
-### LLM Connection Selection
+### LLM Connection Selection in Generation Windows
 
-- **Dynamic Selection:** Choose from available connections at generation time
-- **Connection Display:** Shows connection name, model, and availability
-- **Fallback Behavior:** Prompts user to configure connections if none available
+- **Grouped Picker:** LLM connections are presented in a grouped dropdown. Standard generation windows show two sections — "Chat Completions" and "Responses" — containing only connections of that endpoint type
+- **Locality Icon:** Each connection row shows an icon indicating where the model runs: a house icon for local connections (localhost, 127.0.0.1, etc.) and a cloud icon for remote connections
 - **Per-Generation Choice:** Switch connections between generation attempts
+- **Fallback Behavior:** Prompts user to configure connections if none available
+
+### Prompt Management
+
+- **In-Window Editing:** Edit prompts directly in the generation window
+- **Prompt Persistence:** Save edited prompts back to section configuration
+- **Undo/Revert:** Revert prompt changes to previously saved state
+- **Prompt Preview:** View the complete prompt before generation, including system context
+- **Prompt Export:** Copy the assembled prompt to clipboard or save it as a `.md` file
+
+---
+
+## 5.5 Agent-Based Content Generation
+
+### Overview
+
+In addition to standard streaming generation, ContentGenerator provides an agent-based generation window (`ProjectAgentGenerationWindow`) that uses a tool-calling LLM to autonomously inspect specification sections before writing final content. The agent reads tools from the application and uses them iteratively until it has gathered all necessary context.
+
+### Inference Backends
+
+The agent window supports two inference backends, selectable from a unified picker:
+
+- **Apple Intelligence (on-device):** Uses the Foundation Models framework (`LanguageModelSession`) directly on-device. Available only when the on-device model is present on the system. Uses non-streaming inference with a 4,096 token context window; the model reads section content incrementally via tools.
+- **Open Responses (cloud/local):** Uses an OpenAI-compatible Responses endpoint via the `SwiftOpenResponsesDSL` package. Supports streaming execution, conversation continuity across tool-calling iterations, and optional extended thinking (reasoning) models.
+
+Only connections with the Responses endpoint type are shown in the agent picker. Connections with local base URLs are grouped under "On-Device" alongside Apple Intelligence; remote connections appear under "Cloud Connections".
+
+### Agent Tools
+
+The agent has access to four tools to inspect project content:
+
+| Tool | Purpose |
+|------|---------|
+| List sections | Returns the list of all sections with their enabled state |
+| Read section | Returns content, generation prompt, and usage prompt for a named section |
+| Read system prompt | Returns the project system prompt |
+| Get unread sections | Returns enabled sections not yet read; returns empty when all have been read |
+
+The agent queries unread sections after initial reads and repeats until all enabled sections have been reviewed.
+
+### Activity Log
+
+All agent events are displayed in a single chronological activity log (Column 2):
+
+- **Status updates:** Iteration status, tool invocation status
+- **Thinking summaries:** Deduplicated reasoning summaries from extended thinking models (collapsed by default, expandable)
+- **Thinking blocks:** Full raw reasoning content (collapsed by default, expandable with word count)
+- **Tool calls in progress:** Spinner indicating a tool is executing
+- **Tool calls completed:** Expandable arguments, result preview (truncated at 400 characters), and duration in milliseconds
+- **Token usage:** Cumulative input, output, and total token counts after each iteration; cached input and reasoning output shown when non-zero (Open Responses only)
+- **Completion and failure:** Final status entry
+
+The log auto-scrolls to the bottom as new entries arrive.
+
+### Section and Tool Read Tracking
+
+- **Section Read Counts:** A badge on each section row in Column 1 shows how many times the agent read that section during the current run
+- **Tool Call Counts:** A badge on each tool name shows how many times the tool was called
+
+### Reasoning Effort
+
+For cloud/local Open Responses connections, a Reasoning Effort picker allows selecting None, Low, Medium (default), High, or xHigh to control extended thinking depth.
+
+### Instruments Telemetry (Opt-In)
+
+For cloud/local Open Responses connections, an opt-in Instruments telemetry toggle captures detailed profiling data:
+
+- Per-run, per-iteration, and per-tool-call timing intervals
+- Streaming content delta events
+- Token usage per iteration
+- Full prompt capture (system prompt + user message) written to a temp file
+- Complete wire-format HTTP POST body (including tool schemas, reasoning effort, `previous_response_id`) written to a temp file per LLM iteration
+
+The telemetry preference persists across sessions via UserDefaults.
+
+### Generated Content Actions
+
+- **Copy to Clipboard:** Copy the generated content to the system clipboard
+- **Save to File:** Save generated content as a `.md` file (default filename: `<projectName>_agent_generated.md`)
+- **Done:** Dismiss the agent window
 
 ---
 
@@ -220,9 +302,15 @@ ContentGenerator supports two OpenAI-compatible API endpoint types:
 
 ### Attaching Files
 
-- **Drag-and-Drop:** Add files by dragging onto the attachment area
-- **Supported Types:** Text-based files (txt, md, rtf)
+- **File Picker:** Click the "Add Reference Content" button to open a system file picker
+- **Drag-and-Drop:** Add files by dragging onto the attachment area in the project view
+- **Supported Types:** Text-based files only: `.txt`, `.md`, and `.rtf`
+- **File Size Limit:** 10 MB per file
 - **Purpose:** Provide additional context for LLM content generation
+
+### Bundle Storage
+
+When a file is attached, it is copied into the `.cgspecs` bundle at `projects/<uuid>/attachments/<filename>`. The bundle's single security-scoped bookmark covers all files inside it, eliminating the need for per-file bookmarks. Files remain accessible across application sessions without any additional user interaction.
 
 ### File Metadata
 
@@ -232,6 +320,16 @@ For each attached file, the system tracks:
 - **File Extension:** The file type
 - **File Size:** Size of the file in bytes
 - **Timestamps:** When attached and last modified
+
+### Duplicate File Handling
+
+If the user tries to attach a file whose name already matches an existing attachment (via either the file picker or drag-and-drop), a confirmation dialog is presented:
+
+- **Title:** "Replace `<filename>`?"
+- **Message:** "A file named `<filename>` is already attached to this project. Do you want to replace it with the selected file? This cannot be undone."
+- **Replace (destructive):** Overwrites the bundle copy with the new file and updates the existing attachment record in-place (same UUID, updated file size and timestamp)
+- **Keep Existing (cancel):** Dismisses the dialog with no change
+- Multiple simultaneous duplicates (e.g., multi-file picker with two conflicting names) are queued and each dialog is shown in sequence
 
 ### Selective Inclusion
 
@@ -243,16 +341,13 @@ For each attached file, the system tracks:
 ### File Management
 
 - **View Files:** See all attached files in the project
-- **Remove Files:** Detach files that are no longer needed
-- **Re-Attach Files:** Add files back or update file references
+- **Remove Files:** Detach files that are no longer needed; the bundle copy is automatically deleted
+- **Replace Files:** Replace an existing attachment with a new version; the bundle copy is overwritten in-place and the attachment record (UUID, timestamps) is preserved
+- **Open in Default Application:** Attached files can be opened in their default application
 
-### Security and Accessibility
+### Legacy Attachments and the Locate Button
 
-- **Security-Scoped Bookmarks:** Files accessed via macOS sandbox-compliant bookmarks
-- **Accessibility Status:** Files may become inaccessible (moved, deleted, permissions changed)
-- **Inaccessible Indicator:** Warning icon shown for inaccessible files
-- **Locate Button:** Re-link inaccessible files by browsing to their new location
-- **Accessibility Requirement:** Inaccessible files cannot be selected for content generation
+Attachments created before bundle-based storage (pre-bundle era) may have stored a security-scoped bookmark instead of a bundle copy. These appear with a warning icon and a "Locate" button instead of "Open". Using "Locate" browses for the file, copies it into the bundle, and re-establishes permanent access. After locating, the file behaves identically to a normally attached file.
 
 ---
 
@@ -284,7 +379,7 @@ For each attached file, the system tracks:
 The final prompt sent to the LLM is constructed from:
 
 1. System prompt (project-level)
-2. Enabled specification section contents
+2. Enabled specification section contents (wrapped in camelCase XML tags)
 3. Reference file contents (selected files)
 4. Section-specific generation or usage prompts
 
@@ -319,13 +414,13 @@ The final prompt sent to the LLM is constructed from:
 - Project system prompt
 - All specification sections (name, content, prompts, order, enabled state)
 - LLM connection references (both project-level and section-level)
-- LLM configurations (deduplicated array of all referenced connections)
-- File attachment metadata (filename, path, extension, size)
+- LLM configurations (deduplicated array of all referenced connections, without API keys)
+- File attachment metadata (filename, extension, size, timestamps)
+- File attachment contents: base64-encoded raw bytes for files stored in the bundle and accessible at export time; files that cannot be read export with no content field
 
 **What is NOT Exported:**
 
 - **API Keys:** Never exported for security reasons
-- **File Contents:** Only metadata exported, not actual file data
 - **Generated Content:** Users regenerate after import
 - **Security Bookmarks:** Platform-specific, not portable
 - **Internal IDs:** Fresh UUIDs generated on import (exception: LLM config IDs preserved for reference mapping)
@@ -364,10 +459,10 @@ When importing projects with LLM configurations:
 ### File Attachment Import
 
 - **Metadata Preserved:** Original filename, size, extension, timestamps imported
-- **Inaccessible by Default:** Imported attachments have no security bookmark
-- **Visual Indication:** Warning icon and "Locate" button shown
-- **Locate to Re-link:** Browse for file to re-establish access
-- **File Validation:** Re-linked files must match supported types and size limits
+- **Content Restored Automatically:** If the export contains embedded file contents (base64), files are written into the new bundle's `projects/<uuid>/attachments/` directory and are immediately accessible — no "Locate" step required
+- **Legacy Exports (No Embedded Content):** Attachments from older exports that do not include file contents are marked inaccessible and show a warning icon and "Locate" button instead of "Open"
+- **Locate to Re-link:** For inaccessible attachments, users can use the "Locate" button to browse for the file and copy it into the bundle
+- **File Validation:** Files re-linked via "Locate" must match supported types (.txt, .md, .rtf) and the 10 MB size limit
 
 ---
 
@@ -429,13 +524,19 @@ When a project is selected, the detail area shows:
 - **Reference Files Section:** Attached files and management
 - **Content Specification Section:** All specification sections
 - **Content Generation Settings:** LLM connection selection
-- **Action Buttons:** Generate Content, Export, etc.
+- **Action Buttons:** Generate Content, Generate with Agent, Export, etc.
 
 ### Expandable Sections
 
 - **Collapsed State:** Shows minimal information (name, status)
 - **Expanded State:** Reveals full content and configuration options
 - **Persistent State:** Expansion state remembered across sessions
+
+### Text Editing Features
+
+- **Spell Checking:** Text editors provide macOS-native spell checking and grammar checking
+- **Plain Text Enforcement:** Paste operations intercept and enforce plain text to maintain consistency
+- **Expandable Text Editors:** Text fields can be expanded into a modal sheet for editing longer content, with character count displayed in expanded mode
 
 ### Platform-Specific Behaviors
 

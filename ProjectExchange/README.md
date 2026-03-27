@@ -12,7 +12,7 @@ Referenced by the ContentGenerator app as a local Swift package (`../ProjectExch
 - **JSON Serialization** — Encode/decode projects with ISO8601 dates, pretty-printed output, and UTF-8 encoding
 - **Schema Versioning** — Each export includes a schema version for forward and backward compatibility
 - **Round-Trip Validation** — Encode then decode produces equivalent data
-- **Scoped Export** — Exports project metadata, specifications, prompts, and LLM references; excludes API keys and file contents for security
+- **Scoped Export** — Exports project metadata, specifications, prompts, LLM references, and file attachment contents (base64-encoded); excludes API keys for security
 
 ## Specs
 

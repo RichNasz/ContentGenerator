@@ -209,6 +209,6 @@ Organize `Sources/ProjectExchange/` into four subdirectories: `Models/` for tran
 
 ---
 
-**Last Updated**: 2026-03-17
+**Last Updated**: 2026-03-27
 **Swift Version**: 6.2 (swift-tools-version: 6.2)
 **Note**: ProjectExchange is a Foundation-only Swift Package with no SwiftData or SwiftUI dependencies. Full Swift 6 strict concurrency applies (`Sendable` conformance required on all public types).

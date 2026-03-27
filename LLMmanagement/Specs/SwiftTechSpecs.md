@@ -173,6 +173,6 @@ Views manage state directly with no ViewModel layer. `LLMConnectionListView` hol
 
 ---
 
-**Last Updated**: 2026-03-03
+**Last Updated**: 2026-03-27
 **Swift Version**: 6.2 (swift-tools-version: 6.2)
 **Note**: LLMmanagement is a Swift Package — `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` is an Xcode build setting that does NOT apply when building the package standalone with `swift build`. Explicit `@MainActor` annotations are required on UI-facing methods.
