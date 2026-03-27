@@ -144,6 +144,23 @@ final class ContentProject {
 
 *Compilation-time errors and their solutions*
 
+### ERR-COMPILE-005: Ambiguous type names when importing two DSL modules simultaneously
+
+- **Discovery Method**: Compilation
+- **Frequency**: 1 (2026-03-27)
+- **Error Message**: `Ambiguous use of 'init(_:)'` or `Ambiguous use of 'init(baseURL:apiKey:sessionConfiguration:)'`
+- **Context**: `SectionContentGenerationWindow.swift` and `ProjectContentGenerationWindow.swift` after adding `import SwiftOpenResponsesDSL` alongside the existing `import SwiftChatCompletionsDSL`. Both DSLs define identically named types: `LLMClient`, `LLMError`, `Temperature`, `RequestTimeout`, `ResourceTimeout`.
+- **Root Cause**: Swift resolves unqualified type names by searching all imported modules. When two modules export the same type name, the compiler cannot choose and emits `Ambiguous use of`. Even inside a result builder closure (e.g., `ChatRequest { ... }`), the builder's expected element type is not enough to disambiguate a plain `Temperature(0.7)` call if the same name exists in another module.
+- **Proven Fix**: Qualify every reference to a type that exists in both modules:
+  - `SwiftChatCompletionsDSL.LLMClient(...)` in the `.chatCompletions` Task
+  - `SwiftOpenResponsesDSL.LLMClient(...)` in the `.responses` Task
+  - `SwiftChatCompletionsDSL.Temperature(...)`, `SwiftChatCompletionsDSL.RequestTimeout(...)`, `SwiftChatCompletionsDSL.ResourceTimeout(...)` inside `ChatRequest { }` builder
+  - `catch let error as SwiftChatCompletionsDSL.LLMError` and `catch let error as SwiftOpenResponsesDSL.LLMError`
+  - Overload `formatLLMError` with two typed parameters instead of a single unqualified `LLMError` parameter
+- **Prevention Pattern**: Whenever a file imports two modules that share type names, always qualify those names with their module prefix. `[any ResponseConfigParameter]` annotation on the config params array is sufficient to disambiguate `RequestTimeout`/`ResourceTimeout` in the `.responses` case (since that protocol is unique to `SwiftOpenResponsesDSL`), but explicit qualification in the `.chatCompletions` builder is still required.
+- **Files Affected**: `ContentGenerator/ContentGeneration/Views/SectionContentGenerationWindow.swift`, `ContentGenerator/ContentGeneration/Views/ProjectContentGenerationWindow.swift`
+- **Last Updated**: 2026-03-27
+
 ## SwiftData Errors
 
 *SwiftData-specific errors and patterns*
@@ -505,6 +522,6 @@ func textDidChange(_ notification: Notification) {
 
 ---
 
-**Last Updated**: 2026-03-04
+**Last Updated**: 2026-03-27
 **Swift Version**: 6.2+ with Default MainActor Isolation
 **Project**: ContentGenerator

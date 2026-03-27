@@ -68,12 +68,14 @@
 - **Generation Windows:** Dedicated windows for content generation workflow with real-time preview
 - **Three-Column Layout:** Both section and project generation windows use a three-column layout: (1) current content/overview, (2) LLM controls and prompt editing, (3) generated content display
 - **Iterative Refinement:** Regenerate content with adjusted prompts until satisfactory
+- **Dual Endpoint Support:** Both `SectionContentGenerationWindow` and `ProjectContentGenerationWindow` support LLM connections of either endpoint type (Chat Completions or Responses). The generation behaviour is identical from the user's perspective — send prompt, stream text, display result
 
 #### Streaming Content Generation
 - **Real-Time Display:** Generated content streams to UI character-by-character as received from LLM
 - **Progress Indication:** Visual feedback during active generation process
 - **Cancellation Support:** Users can cancel in-progress generation at any time
 - **Error Recovery:** Graceful handling of generation failures with user-friendly error messages
+- **Endpoint Transparency:** The user selects an LLM connection; the window automatically uses the appropriate streaming path for the connection's endpoint type without requiring user intervention
 
 #### Agent-Based Content Generation
 - **Agent Generation Window:** A dedicated window (`ProjectAgentGenerationWindow`) that uses an autonomous agent (tool-calling LLM) to inspect specification sections before writing final content
@@ -327,4 +329,4 @@ When importing a project with file attachments:
 
 **Note:** This specification will be updated as functionality is developed. Each new feature should be documented here in language-agnostic terms focusing on WHAT the feature does, not HOW it's implemented.
 
-**Last Updated:** 2026-03-17 (updated: agent generation + thinking model response handling added)
+**Last Updated:** 2026-03-27 (added: dual endpoint support for standard content generation windows)

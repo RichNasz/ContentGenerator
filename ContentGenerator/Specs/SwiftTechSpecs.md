@@ -517,6 +517,52 @@ The application uses dedicated windows for content generation workflows, separat
 - Use `@Environment(\.openWindow)` to launch generation windows
 - Window scenes registered in app definition with appropriate identifiers
 
+#### Dual-Endpoint Pattern (Both Generation Windows)
+
+Both generation windows import `SwiftChatCompletionsDSL` and `SwiftOpenResponsesDSL` and switch on `llmConnection.endpointType` in `generateContent()`:
+
+```swift
+switch llmConnection.endpointType {
+case .chatCompletions:
+    Task { /* SwiftChatCompletionsDSL path */ }
+case .responses:
+    Task { /* SwiftOpenResponsesDSL path */ }
+}
+```
+
+**Chat Completions path** (`SectionContentGenerationWindow`, `ProjectContentGenerationWindow`):
+- `SwiftChatCompletionsDSL.LLMClient` + `ChatRequest` + `client.stream(request)`
+- Extract: `delta.choices.first?.delta.content`
+- Qualify builder params: `SwiftChatCompletionsDSL.Temperature(0.7)`, `SwiftChatCompletionsDSL.RequestTimeout(...)`, `SwiftChatCompletionsDSL.ResourceTimeout(...)`
+- Catch: `catch let error as SwiftChatCompletionsDSL.LLMError`
+
+**Responses path** (`SectionContentGenerationWindow`, `ProjectContentGenerationWindow`):
+- `SwiftOpenResponsesDSL.LLMClient` + `ToolSession(client:tools:[],maxIterations:1,handlers:[:])` + `session.stream(model:input:[User(msg)],configParams:)`
+- Extract: `if case .llm(let se) = event, case .contentPartDelta(let delta, _, _) = se`
+- Config params: `[any ResponseConfigParameter]` — `RequestTimeout`, `ResourceTimeout` (and `Instructions(buildSystemPrompt())` in `ProjectContentGenerationWindow`)
+- Catch: `catch let error as SwiftOpenResponsesDSL.LLMError`
+
+**`formatLLMError` overloading pattern** (required when both DSLs imported):
+```swift
+private func formatLLMError(_ error: SwiftChatCompletionsDSL.LLMError) -> String { ... }
+private func formatLLMError(_ error: SwiftOpenResponsesDSL.LLMError) -> String { ... }
+```
+Swift resolves the correct overload by parameter type. Both have identical bodies (same case names). See `CodeLessonsLearned.md ERR-COMPILE-005` for the ambiguity details.
+
+**Throttled UI update pattern** (both paths, both windows):
+```swift
+var lastUpdateTime = Date.distantPast
+let updateInterval: TimeInterval = 0.05
+// ... in streaming loop:
+let now = Date()
+if now.timeIntervalSince(lastUpdateTime) >= updateInterval {
+    lastUpdateTime = now
+    await MainActor.run { generatedContent = fullContent }
+}
+// After loop:
+await MainActor.run { generatedContent = fullContent }
+```
+
 ### Agent Generation Window Pattern (AgentGen Package)
 
 The `AgentGen` local Swift package (at `AgentGen/`) provides the agent-based generation window with pluggable inference backends. It is macOS-only; views and the Open Responses backend are guarded with `#if os(macOS)`.
@@ -1098,6 +1144,6 @@ nonisolated func batchUpdateProjects(_ updates: [ProjectUpdate]) async throws {
 
 ---
 
-**Last Updated**: 2026-03-24 (updated: ChatCompletionsAgentGen replaced with AgentGen multi-backend architecture)
+**Last Updated**: 2026-03-27 (added: dual-endpoint pattern for SectionContentGenerationWindow and ProjectContentGenerationWindow; type qualification guidance for dual-DSL imports)
 **Swift Version**: 6.2.3 (Xcode toolchain), language version 6.2, with Default MainActor Isolation
 **Important:** This document provides implementation guidance only. Actual code should be generated and compiled to ensure correctness. Update this document as architectural decisions are made during development.

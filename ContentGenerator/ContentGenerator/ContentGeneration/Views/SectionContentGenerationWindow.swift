@@ -12,6 +12,7 @@ import SwiftUI
 import SwiftData
 import LLMmanagement
 import SwiftChatCompletionsDSL
+import SwiftOpenResponsesDSL
 import AppKit
 import UniformTypeIdentifiers
 
@@ -383,109 +384,153 @@ struct SectionContentGenerationWindow: View {
             return
         }
 
-        // Verify the connection uses Chat Completions endpoint
-        guard llmConnection.endpointType == .chatCompletions else {
-            errorMessage = "This LLM connection uses the '\(llmConnection.endpointType.displayName)' endpoint. Only 'Chat Completions' endpoints are currently supported for content generation."
-            showingError = true
-            return
-        }
+        switch llmConnection.endpointType {
+        case .chatCompletions:
+            Task {
+                isGenerating = true
+                generatedContent = ""
+                errorMessage = nil
 
-        Task {
-            isGenerating = true
-            // Always clear generated content to show only the latest generation result
-            generatedContent = ""
-            errorMessage = nil
+                do {
+                    let client = try SwiftChatCompletionsDSL.LLMClient(
+                        baseURL: llmConnection.fullApiUrl,
+                        apiKey: llmConnection.apiKey
+                    )
 
-            do {
-                // Create the LLM client
-                let client = try LLMClient(
-                    baseURL: llmConnection.fullApiUrl,
-                    apiKey: llmConnection.apiKey
-                )
+                    let userMessage = await buildUserMessage()
 
-                // Build the user prompt only (no system prompt per user requirements)
-                let userMessage = await buildUserMessage()
+                    let validRequestTimeout = max(10, min(900, TimeInterval(llmConnection.requestTimeoutSeconds)))
+                    let validResourceTimeout = max(30, min(3600, TimeInterval(llmConnection.requestTimeoutSeconds)))
 
-                // Create the chat request with streaming
-                // Use the user's configured timeout value, clamped to each parameter's valid range
-                // RequestTimeout: 10-900 seconds per SwiftChatCompletionsDSL
-                let validRequestTimeout = max(10, min(900, TimeInterval(llmConnection.requestTimeoutSeconds)))
-                // ResourceTimeout: 30-3600 seconds per SwiftChatCompletionsDSL
-                let validResourceTimeout = max(30, min(3600, TimeInterval(llmConnection.requestTimeoutSeconds)))
+                    let request = try ChatRequest(model: llmConnection.selectedModel, stream: true) {
+                        try SwiftChatCompletionsDSL.Temperature(0.7)
+                        try SwiftChatCompletionsDSL.RequestTimeout(validRequestTimeout)
+                        try SwiftChatCompletionsDSL.ResourceTimeout(validResourceTimeout)
+                    } messages: {
+                        TextMessage(role: .user, content: userMessage)
+                    }
 
-                let request = try ChatRequest(model: llmConnection.selectedModel, stream: true) {
-                    try Temperature(0.7)
-                    try RequestTimeout(validRequestTimeout)
-                    try ResourceTimeout(validResourceTimeout)
-                } messages: {
-                    TextMessage(role: .user, content: userMessage)
+                    let stream = client.stream(request)
+                    var fullContent = ""
+                    var lastUpdateTime = Date.distantPast
+                    let updateInterval: TimeInterval = 0.05
+
+                    for try await delta in stream {
+                        let contentPiece = delta.choices.first?.delta.content
+                        let finishReason = delta.choices.first?.finishReason
+
+                        if let content = contentPiece {
+                            fullContent += content
+
+                            let now = Date()
+                            if now.timeIntervalSince(lastUpdateTime) >= updateInterval {
+                                lastUpdateTime = now
+                                await MainActor.run {
+                                    generatedContent = fullContent
+                                }
+                            }
+                        }
+
+                        if finishReason != nil {
+                            break
+                        }
+                    }
+
+                    await MainActor.run {
+                        generatedContent = fullContent
+                    }
+
+                    if fullContent.isEmpty {
+                        await MainActor.run {
+                            isGenerating = false
+                            errorMessage = "No content was generated. The connection may have timed out or the server did not respond. Please check:\n\n• Network connectivity\n• LLM service is running and accessible\n• API key is valid (if required)\n• Model name is correct\n• Timeout values are sufficient (currently: \(llmConnection.requestTimeoutSeconds)s)\n\nTry increasing the timeout values if the request times out."
+                            showingError = true
+                        }
+                        return
+                    }
+
+                    llmConnection.updateLastUsed()
+
+                    await MainActor.run {
+                        isGenerating = false
+                    }
+
+                } catch let error as SwiftChatCompletionsDSL.LLMError {
+                    await MainActor.run {
+                        isGenerating = false
+                        errorMessage = formatLLMError(error)
+                        showingError = true
+                    }
+                } catch {
+                    await MainActor.run {
+                        isGenerating = false
+                        errorMessage = "Unexpected error: \(error.localizedDescription)"
+                        showingError = true
+                    }
                 }
+            }
 
-                // Stream the response
-                let stream = client.stream(request)
-                // Always start with empty content for each new generation
-                var fullContent = ""
+        case .responses:
+            Task {
+                isGenerating = true
+                generatedContent = ""
+                errorMessage = nil
 
-                // Throttling: update UI at most every 50ms (20 fps) for smooth streaming
-                var lastUpdateTime = Date.distantPast
-                let updateInterval: TimeInterval = 0.05
+                do {
+                    let client = try SwiftOpenResponsesDSL.LLMClient(
+                        baseURL: llmConnection.fullApiUrl,
+                        apiKey: llmConnection.apiKey
+                    )
 
-                for try await delta in stream {
-                    let contentPiece = delta.choices.first?.delta.content
-                    let finishReason = delta.choices.first?.finishReason
+                    let userMessage = await buildUserMessage()
 
-                    if let content = contentPiece {
-                        fullContent += content
+                    let validRequestTimeout = max(10, min(900, TimeInterval(llmConnection.requestTimeoutSeconds)))
+                    let validResourceTimeout = max(30, min(3600, TimeInterval(llmConnection.requestTimeoutSeconds)))
 
-                        // Only update UI if enough time has passed
-                        let now = Date()
-                        if now.timeIntervalSince(lastUpdateTime) >= updateInterval {
-                            lastUpdateTime = now
-                            await MainActor.run {
-                                generatedContent = fullContent
+                    let configParams: [any ResponseConfigParameter] = [
+                        try RequestTimeout(validRequestTimeout),
+                        try ResourceTimeout(validResourceTimeout),
+                    ]
+
+                    let session = ToolSession(client: client, tools: [], maxIterations: 1, handlers: [:])
+                    let toolStream = session.stream(
+                        model: llmConnection.selectedModel,
+                        input: [User(userMessage)],
+                        configParams: configParams
+                    )
+
+                    var fullContent = ""
+                    var lastUpdateTime = Date.distantPast
+                    let updateInterval: TimeInterval = 0.05
+
+                    for try await event in toolStream {
+                        if case .llm(let se) = event,
+                           case .contentPartDelta(let delta, _, _) = se {
+                            fullContent += delta
+                            let now = Date()
+                            if now.timeIntervalSince(lastUpdateTime) >= updateInterval {
+                                lastUpdateTime = now
+                                await MainActor.run { generatedContent = fullContent }
                             }
                         }
                     }
 
-                    // Check if streaming is complete
-                    if finishReason != nil {
-                        break
-                    }
-                }
+                    await MainActor.run { generatedContent = fullContent }
+                    llmConnection.updateLastUsed()
+                    await MainActor.run { isGenerating = false }
 
-                // Final update to ensure all content is shown
-                await MainActor.run {
-                    generatedContent = fullContent
-                }
-
-                // Check if any content was generated
-                if fullContent.isEmpty {
+                } catch let error as SwiftOpenResponsesDSL.LLMError {
                     await MainActor.run {
                         isGenerating = false
-                        errorMessage = "No content was generated. The connection may have timed out or the server did not respond. Please check:\n\n• Network connectivity\n• LLM service is running and accessible\n• API key is valid (if required)\n• Model name is correct\n• Timeout values are sufficient (currently: \(llmConnection.requestTimeoutSeconds)s)\n\nTry increasing the timeout values if the request times out."
+                        errorMessage = formatLLMError(error)
                         showingError = true
                     }
-                    return
-                }
-
-                // Update last used timestamp
-                llmConnection.updateLastUsed()
-
-                await MainActor.run {
-                    isGenerating = false
-                }
-
-            } catch let error as LLMError {
-                await MainActor.run {
-                    isGenerating = false
-                    errorMessage = formatLLMError(error)
-                    showingError = true
-                }
-            } catch {
-                await MainActor.run {
-                    isGenerating = false
-                    errorMessage = "Unexpected error: \(error.localizedDescription)"
-                    showingError = true
+                } catch {
+                    await MainActor.run {
+                        isGenerating = false
+                        errorMessage = "Unexpected error: \(error.localizedDescription)"
+                        showingError = true
+                    }
                 }
             }
         }
@@ -548,7 +593,42 @@ struct SectionContentGenerationWindow: View {
     }
 
     /// Formats LLMError into user-friendly error messages
-    private func formatLLMError(_ error: LLMError) -> String {
+    private func formatLLMError(_ error: SwiftChatCompletionsDSL.LLMError) -> String {
+        switch error {
+        case .invalidURL:
+            return "Invalid URL configuration. Please check the LLM connection settings."
+        case .encodingFailed(let message):
+            return "Request encoding failed: \(message)"
+        case .decodingFailed(let message):
+            return "Response decoding failed: \(message)"
+        case .networkError(let message):
+            return "Network error: \(message)"
+        case .serverError(let statusCode, let message):
+            if let msg = message {
+                return "Server error (\(statusCode)): \(msg)"
+            } else {
+                return "Server error: HTTP \(statusCode)"
+            }
+        case .rateLimit:
+            return "Rate limit exceeded. Please try again later."
+        case .invalidResponse:
+            return "Received invalid response from the server."
+        case .missingBaseURL:
+            return "Missing base URL configuration."
+        case .missingModel:
+            return "Missing model selection."
+        case .invalidValue(let message):
+            return "Invalid parameter: \(message)"
+        case .maxIterationsExceeded(let iterations):
+            return "Tool-calling loop exceeded maximum iterations (\(iterations)). Please try again."
+        case .unknownTool(let name):
+            return "Unknown tool requested: \(name). Please check your LLM configuration."
+        case .toolExecutionFailed(let toolName, let message):
+            return "Tool execution failed (\(toolName)): \(message)"
+        }
+    }
+
+    private func formatLLMError(_ error: SwiftOpenResponsesDSL.LLMError) -> String {
         switch error {
         case .invalidURL:
             return "Invalid URL configuration. Please check the LLM connection settings."
