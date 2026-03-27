@@ -33,6 +33,7 @@ struct ProjectContentGenerationWindow: View {
     @State private var selectedLLMId: UUID?
     @State private var errorMessage: String?
     @State private var showingError: Bool = false
+    @State private var feedbackEntries: [GenerationFeedbackEntry] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -205,6 +206,12 @@ struct ProjectContentGenerationWindow: View {
                     .foregroundStyle(.secondary)
             }
 
+            // Activity feedback log
+            if !feedbackEntries.isEmpty {
+                GenerationFeedbackView(entries: feedbackEntries)
+                    .frame(maxHeight: 300)
+            }
+
             Spacer()
         }
         .padding()
@@ -266,12 +273,15 @@ struct ProjectContentGenerationWindow: View {
             return
         }
 
+        feedbackEntries = []
+
         switch llmConnection.endpointType {
         case .chatCompletions:
             Task {
                 isGenerating = true
                 generatedContent = ""
                 errorMessage = nil
+                feedbackEntries.append(GenerationFeedbackEntry(kind: .status("Generating…")))
 
                 do {
                     let client = try SwiftChatCompletionsDSL.LLMClient(
@@ -320,28 +330,40 @@ struct ProjectContentGenerationWindow: View {
                         }
                     }
 
+                    // Extract <think> blocks from accumulated content
+                    let parsed = extractThinkingBlocks(from: fullContent)
+                    for block in parsed.blocks {
+                        feedbackEntries.append(GenerationFeedbackEntry(kind: .thinkingBlock(block)))
+                    }
+                    let finalContent = parsed.content
+
                     await MainActor.run {
-                        generatedContent = fullContent
+                        generatedContent = finalContent
                     }
 
+                    feedbackEntries.append(GenerationFeedbackEntry(kind: .completed))
                     llmConnection.updateLastUsed()
 
                     await MainActor.run {
                         isGenerating = false
-                        onContentGenerated(fullContent)
+                        onContentGenerated(finalContent)
                         onLLMSelectionChanged?(selectedLLMId)
                     }
 
                 } catch let error as SwiftChatCompletionsDSL.LLMError {
+                    let message = formatLLMError(error)
+                    feedbackEntries.append(GenerationFeedbackEntry(kind: .failed(message)))
                     await MainActor.run {
                         isGenerating = false
-                        errorMessage = formatLLMError(error)
+                        errorMessage = message
                         showingError = true
                     }
                 } catch {
+                    let message = "Unexpected error: \(error.localizedDescription)"
+                    feedbackEntries.append(GenerationFeedbackEntry(kind: .failed(message)))
                     await MainActor.run {
                         isGenerating = false
-                        errorMessage = "Unexpected error: \(error.localizedDescription)"
+                        errorMessage = message
                         showingError = true
                     }
                 }
@@ -352,6 +374,7 @@ struct ProjectContentGenerationWindow: View {
                 isGenerating = true
                 generatedContent = ""
                 errorMessage = nil
+                feedbackEntries.append(GenerationFeedbackEntry(kind: .status("Generating…")))
 
                 do {
                     let client = try SwiftOpenResponsesDSL.LLMClient(
@@ -382,18 +405,42 @@ struct ProjectContentGenerationWindow: View {
                     let updateInterval: TimeInterval = 0.05
 
                     for try await event in toolStream {
-                        if case .llm(let se) = event,
-                           case .contentPartDelta(let delta, _, _) = se {
-                            fullContent += delta
-                            let now = Date()
-                            if now.timeIntervalSince(lastUpdateTime) >= updateInterval {
-                                lastUpdateTime = now
-                                await MainActor.run { generatedContent = fullContent }
+                        switch event {
+                        case .llm(let se):
+                            switch se {
+                            case .contentPartDelta(let delta, _, _):
+                                fullContent += delta
+                                let now = Date()
+                                if now.timeIntervalSince(lastUpdateTime) >= updateInterval {
+                                    lastUpdateTime = now
+                                    await MainActor.run { generatedContent = fullContent }
+                                }
+                            case .reasoningSummaryPartDone(let part, _, _):
+                                let summary = part.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                                if !summary.isEmpty {
+                                    feedbackEntries.append(GenerationFeedbackEntry(kind: .thinkingSummary(summary)))
+                                }
+                            case .outputItemDone(let item, _):
+                                if case .reasoning(let r) = item {
+                                    if let content = r.contentText, !content.isEmpty {
+                                        feedbackEntries.append(GenerationFeedbackEntry(kind: .thinkingBlock(content)))
+                                    }
+                                    for s in (r.summary ?? []) {
+                                        feedbackEntries.append(GenerationFeedbackEntry(kind: .thinkingSummary(s.text)))
+                                    }
+                                }
+                            default:
+                                break
                             }
+                        case .usageUpdate(let usage, _):
+                            feedbackEntries.append(GenerationFeedbackEntry(kind: .tokenUsage(formatResponseUsage(usage))))
+                        default:
+                            break
                         }
                     }
 
                     await MainActor.run { generatedContent = fullContent }
+                    feedbackEntries.append(GenerationFeedbackEntry(kind: .completed))
                     llmConnection.updateLastUsed()
                     await MainActor.run {
                         isGenerating = false
@@ -402,20 +449,37 @@ struct ProjectContentGenerationWindow: View {
                     }
 
                 } catch let error as SwiftOpenResponsesDSL.LLMError {
+                    let message = formatLLMError(error)
+                    feedbackEntries.append(GenerationFeedbackEntry(kind: .failed(message)))
                     await MainActor.run {
                         isGenerating = false
-                        errorMessage = formatLLMError(error)
+                        errorMessage = message
                         showingError = true
                     }
                 } catch {
+                    let message = "Unexpected error: \(error.localizedDescription)"
+                    feedbackEntries.append(GenerationFeedbackEntry(kind: .failed(message)))
                     await MainActor.run {
                         isGenerating = false
-                        errorMessage = "Unexpected error: \(error.localizedDescription)"
+                        errorMessage = message
                         showingError = true
                     }
                 }
             }
         }
+    }
+
+    private func formatResponseUsage(_ usage: ResponseObject.Usage) -> String {
+        var parts = ["Input: \(usage.inputTokens)"]
+        if let cached = usage.inputTokensDetails?.cachedTokens, cached > 0 {
+            parts[0] += " (\(cached) cached)"
+        }
+        if let reasoning = usage.outputTokensDetails?.reasoningTokens, reasoning > 0 {
+            parts.append("Reasoning: \(reasoning)")
+        }
+        parts.append("Output: \(usage.outputTokens)")
+        parts.append("Total: \(usage.inputTokens + usage.outputTokens)")
+        return parts.joined(separator: " | ")
     }
 
     // MARK: - Prompt Building

@@ -38,6 +38,7 @@ struct SectionContentGenerationWindow: View {
     @State private var showingLLMWarning: Bool = false
     @State private var errorMessage: String?
     @State private var showingError: Bool = false
+    @State private var feedbackEntries: [GenerationFeedbackEntry] = []
 
     // Reference file selection state
     @State private var selectedAttachmentIds: Set<UUID> = []
@@ -284,6 +285,12 @@ struct SectionContentGenerationWindow: View {
                 .controlSize(.large)
                 .help("Export complete LLM prompt")
             }
+
+            // Activity feedback log
+            if !feedbackEntries.isEmpty {
+                GenerationFeedbackView(entries: feedbackEntries)
+                    .frame(maxHeight: 300)
+            }
             }
             .padding()
         }
@@ -384,12 +391,15 @@ struct SectionContentGenerationWindow: View {
             return
         }
 
+        feedbackEntries = []
+
         switch llmConnection.endpointType {
         case .chatCompletions:
             Task {
                 isGenerating = true
                 generatedContent = ""
                 errorMessage = nil
+                feedbackEntries.append(GenerationFeedbackEntry(kind: .status("Generating…")))
 
                 do {
                     let client = try SwiftChatCompletionsDSL.LLMClient(
@@ -436,11 +446,28 @@ struct SectionContentGenerationWindow: View {
                         }
                     }
 
+                    // Extract <think> blocks from accumulated content
+                    let parsed = extractThinkingBlocks(from: fullContent)
+                    for block in parsed.blocks {
+                        feedbackEntries.append(GenerationFeedbackEntry(kind: .thinkingBlock(block)))
+                    }
+                    let finalContent = parsed.content
+
                     await MainActor.run {
-                        generatedContent = fullContent
+                        generatedContent = finalContent
                     }
 
-                    if fullContent.isEmpty {
+                    if finalContent.isEmpty && !parsed.blocks.isEmpty {
+                        await MainActor.run {
+                            isGenerating = false
+                            errorMessage = "The model produced only reasoning content with no final output."
+                            showingError = true
+                        }
+                        feedbackEntries.append(GenerationFeedbackEntry(kind: .failed("Only reasoning content returned — no final text.")))
+                        return
+                    }
+
+                    if finalContent.isEmpty {
                         await MainActor.run {
                             isGenerating = false
                             errorMessage = "No content was generated. The connection may have timed out or the server did not respond. Please check:\n\n• Network connectivity\n• LLM service is running and accessible\n• API key is valid (if required)\n• Model name is correct\n• Timeout values are sufficient (currently: \(llmConnection.requestTimeoutSeconds)s)\n\nTry increasing the timeout values if the request times out."
@@ -449,6 +476,7 @@ struct SectionContentGenerationWindow: View {
                         return
                     }
 
+                    feedbackEntries.append(GenerationFeedbackEntry(kind: .completed))
                     llmConnection.updateLastUsed()
 
                     await MainActor.run {
@@ -456,15 +484,19 @@ struct SectionContentGenerationWindow: View {
                     }
 
                 } catch let error as SwiftChatCompletionsDSL.LLMError {
+                    let message = formatLLMError(error)
+                    feedbackEntries.append(GenerationFeedbackEntry(kind: .failed(message)))
                     await MainActor.run {
                         isGenerating = false
-                        errorMessage = formatLLMError(error)
+                        errorMessage = message
                         showingError = true
                     }
                 } catch {
+                    let message = "Unexpected error: \(error.localizedDescription)"
+                    feedbackEntries.append(GenerationFeedbackEntry(kind: .failed(message)))
                     await MainActor.run {
                         isGenerating = false
-                        errorMessage = "Unexpected error: \(error.localizedDescription)"
+                        errorMessage = message
                         showingError = true
                     }
                 }
@@ -475,6 +507,7 @@ struct SectionContentGenerationWindow: View {
                 isGenerating = true
                 generatedContent = ""
                 errorMessage = nil
+                feedbackEntries.append(GenerationFeedbackEntry(kind: .status("Generating…")))
 
                 do {
                     let client = try SwiftOpenResponsesDSL.LLMClient(
@@ -504,36 +537,77 @@ struct SectionContentGenerationWindow: View {
                     let updateInterval: TimeInterval = 0.05
 
                     for try await event in toolStream {
-                        if case .llm(let se) = event,
-                           case .contentPartDelta(let delta, _, _) = se {
-                            fullContent += delta
-                            let now = Date()
-                            if now.timeIntervalSince(lastUpdateTime) >= updateInterval {
-                                lastUpdateTime = now
-                                await MainActor.run { generatedContent = fullContent }
+                        switch event {
+                        case .llm(let se):
+                            switch se {
+                            case .contentPartDelta(let delta, _, _):
+                                fullContent += delta
+                                let now = Date()
+                                if now.timeIntervalSince(lastUpdateTime) >= updateInterval {
+                                    lastUpdateTime = now
+                                    await MainActor.run { generatedContent = fullContent }
+                                }
+                            case .reasoningSummaryPartDone(let part, _, _):
+                                let summary = part.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                                if !summary.isEmpty {
+                                    feedbackEntries.append(GenerationFeedbackEntry(kind: .thinkingSummary(summary)))
+                                }
+                            case .outputItemDone(let item, _):
+                                if case .reasoning(let r) = item {
+                                    if let content = r.contentText, !content.isEmpty {
+                                        feedbackEntries.append(GenerationFeedbackEntry(kind: .thinkingBlock(content)))
+                                    }
+                                    for s in (r.summary ?? []) {
+                                        feedbackEntries.append(GenerationFeedbackEntry(kind: .thinkingSummary(s.text)))
+                                    }
+                                }
+                            default:
+                                break
                             }
+                        case .usageUpdate(let usage, _):
+                            feedbackEntries.append(GenerationFeedbackEntry(kind: .tokenUsage(formatResponseUsage(usage))))
+                        default:
+                            break
                         }
                     }
 
                     await MainActor.run { generatedContent = fullContent }
+                    feedbackEntries.append(GenerationFeedbackEntry(kind: .completed))
                     llmConnection.updateLastUsed()
                     await MainActor.run { isGenerating = false }
 
                 } catch let error as SwiftOpenResponsesDSL.LLMError {
+                    let message = formatLLMError(error)
+                    feedbackEntries.append(GenerationFeedbackEntry(kind: .failed(message)))
                     await MainActor.run {
                         isGenerating = false
-                        errorMessage = formatLLMError(error)
+                        errorMessage = message
                         showingError = true
                     }
                 } catch {
+                    let message = "Unexpected error: \(error.localizedDescription)"
+                    feedbackEntries.append(GenerationFeedbackEntry(kind: .failed(message)))
                     await MainActor.run {
                         isGenerating = false
-                        errorMessage = "Unexpected error: \(error.localizedDescription)"
+                        errorMessage = message
                         showingError = true
                     }
                 }
             }
         }
+    }
+
+    private func formatResponseUsage(_ usage: ResponseObject.Usage) -> String {
+        var parts = ["Input: \(usage.inputTokens)"]
+        if let cached = usage.inputTokensDetails?.cachedTokens, cached > 0 {
+            parts[0] += " (\(cached) cached)"
+        }
+        if let reasoning = usage.outputTokensDetails?.reasoningTokens, reasoning > 0 {
+            parts.append("Reasoning: \(reasoning)")
+        }
+        parts.append("Output: \(usage.outputTokens)")
+        parts.append("Total: \(usage.inputTokens + usage.outputTokens)")
+        return parts.joined(separator: " | ")
     }
 
     /// Reverts the user prompt to the original content generation prompt
