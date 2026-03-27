@@ -1,4 +1,4 @@
-![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue) ![Swift 6.2](https://img.shields.io/badge/Swift-6.2-orange) ![Xcode 26.3+](https://img.shields.io/badge/Xcode-26.3%2B-blue) ![License: MIT](https://img.shields.io/badge/License-MIT-green) ![CI](https://github.com/USER/ContentGenerator/actions/workflows/CI.yml/badge.svg?branch=main)
+![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue) ![Swift 6.2](https://img.shields.io/badge/Swift-6.2-orange) ![Xcode 26.3+](https://img.shields.io/badge/Xcode-26.3%2B-blue) ![License: MIT](https://img.shields.io/badge/License-MIT-green) ![CI](https://github.com/RichNasz/ContentGenerator/actions/workflows/CI.yml/badge.svg?branch=main)
 
 # ContentGenerator
 
