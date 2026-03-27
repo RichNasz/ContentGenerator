@@ -502,12 +502,13 @@ The application uses dedicated windows for content generation workflows, separat
 
 **ProjectContentGenerationWindow:**
 - Standalone window for project-level content generation
-- Three-column layout: project overview, LLM controls, generated content
-- Manages window state independently from main app via `ProjectContentGenerationWindowState`
+- Two-column layout: LLM controls | generated content (project overview column removed)
+- Default window size: `minWidth: 700, idealWidth: 1200, idealHeight: 700`
+- macOS remembers user-resized dimensions via window restoration; ideal size applies only on first open
 
 **SectionContentGenerationWindow:**
 - Focused window for single-section content generation
-- Three-column layout: current content, LLM controls/prompts, generated content
+- Three-column layout: current content (read-only) | LLM controls/prompts | generated content
 - Includes prompt export (copy to clipboard, save to .md file)
 
 **Window State Management Pattern:**
@@ -562,6 +563,54 @@ if now.timeIntervalSince(lastUpdateTime) >= updateInterval {
 // After loop:
 await MainActor.run { generatedContent = fullContent }
 ```
+
+#### LLM Picker Grouping Pattern (Both Standard Generation Windows)
+
+Both `SectionContentGenerationWindow` and `ProjectContentGenerationWindow` group connections by endpoint type and show a local/cloud locality icon using:
+
+```swift
+// Computed properties — filter configuredLLMConnections by endpoint type
+private var chatCompletionsConnections: [LLMConnection] {
+    configuredLLMConnections.filter { $0.endpointType == .chatCompletions }
+}
+private var responsesConnections: [LLMConnection] {
+    configuredLLMConnections.filter { $0.endpointType == .responses }
+}
+
+// Locality helper — checks base URL host against known local addresses
+private func isLocalConnection(_ connection: LLMConnection) -> Bool {
+    guard let components = URLComponents(string: connection.baseUrl),
+          let host = components.host?.lowercased() else { return false }
+    return host == "localhost" || host == "127.0.0.1"
+        || host == "0.0.0.0" || host == "::1" || host == "[::1]"
+}
+```
+
+Picker structure inside the menu:
+```swift
+Picker("LLM", selection: $selectedLLMId) {
+    Text("Select LLM").tag(nil as UUID?)
+    if !chatCompletionsConnections.isEmpty {
+        Section("Chat Completions") {
+            ForEach(chatCompletionsConnections, id: \.id) { connection in
+                Label(connection.name, systemImage: isLocalConnection(connection) ? "house.fill" : "cloud")
+                    .tag(connection.id as UUID?)
+            }
+        }
+    }
+    if !responsesConnections.isEmpty {
+        Section("Responses") {
+            ForEach(responsesConnections, id: \.id) { connection in
+                Label(connection.name, systemImage: isLocalConnection(connection) ? "house.fill" : "cloud")
+                    .tag(connection.id as UUID?)
+            }
+        }
+    }
+}
+.pickerStyle(.menu)
+```
+
+The agent window (`ProjectAgentGenerationWindow` in `AgentGen`) applies `isLocalConnection()` with the same logic (already defined there) and filters `configuredLLMConnections` to `.responses` only at source. Icons: `"house.fill"` for local, `"cloud"` for cloud/remote connections.
 
 ### Agent Generation Window Pattern (AgentGen Package)
 
@@ -1144,6 +1193,6 @@ nonisolated func batchUpdateProjects(_ updates: [ProjectUpdate]) async throws {
 
 ---
 
-**Last Updated**: 2026-03-27 (added: dual-endpoint pattern for SectionContentGenerationWindow and ProjectContentGenerationWindow; type qualification guidance for dual-DSL imports)
+**Last Updated**: 2026-03-27 (added: LLM picker grouping pattern with Section/Label/isLocalConnection(); updated ProjectContentGenerationWindow to two-column layout; added locality icon guidance)
 **Swift Version**: 6.2.3 (Xcode toolchain), language version 6.2, with Default MainActor Isolation
 **Important:** This document provides implementation guidance only. Actual code should be generated and compiled to ensure correctness. Update this document as architectural decisions are made during development.

@@ -66,7 +66,9 @@
 - **Project-Level Generation:** Generate content based on all enabled specification sections combined
 - **Section-Level Generation:** Generate or refine content for individual sections independently
 - **Generation Windows:** Dedicated windows for content generation workflow with real-time preview
-- **Three-Column Layout:** Both section and project generation windows use a three-column layout: (1) current content/overview, (2) LLM controls and prompt editing, (3) generated content display
+- **Window Layout:**
+  - `SectionContentGenerationWindow` uses a three-column layout: (1) current section content (read-only), (2) LLM controls and prompt editing, (3) generated content display
+  - `ProjectContentGenerationWindow` uses a two-column layout: (1) LLM controls, (2) generated content display
 - **Iterative Refinement:** Regenerate content with adjusted prompts until satisfactory
 - **Dual Endpoint Support:** Both `SectionContentGenerationWindow` and `ProjectContentGenerationWindow` support LLM connections of either endpoint type (Chat Completions or Responses). The generation behaviour is identical from the user's perspective — send prompt, stream text, display result
 
@@ -172,6 +174,8 @@
 
 #### LLM Connection Selection
 - **Dynamic Selection:** Projects select from globally configured LLM connections at generation time
+- **Grouped Picker:** LLM connections are presented in a grouped dropdown menu. Standard generation windows show two sections — "Chat Completions" and "Responses" — containing only connections of that endpoint type. The agent window shows "On-Device" (Apple Intelligence and local Responses connections) and "Cloud Connections" (remote Responses connections only)
+- **Locality Icon:** Each connection row shows an icon indicating where the model runs: `house.fill` for local connections (localhost, 127.0.0.1, etc.) and `cloud` for remote connections
 - **Connection Display:** Show connection name, model, and availability status in generation UI
 - **Fallback Behavior:** Prompt user to configure connections if none available
 - **Per-Generation Choice:** Users can switch connections between generation attempts
@@ -329,4 +333,4 @@ When importing a project with file attachments:
 
 **Note:** This specification will be updated as functionality is developed. Each new feature should be documented here in language-agnostic terms focusing on WHAT the feature does, not HOW it's implemented.
 
-**Last Updated:** 2026-03-27 (added: dual endpoint support for standard content generation windows)
+**Last Updated:** 2026-03-27 (added: LLM picker grouped by endpoint type with local/cloud icons; ProjectContentGenerationWindow simplified to two-column layout)
