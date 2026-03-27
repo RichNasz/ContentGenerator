@@ -98,20 +98,14 @@ This implementation must follow patterns and standards defined in the common spe
 ### Method Signatures
 
 **Factory Methods**
-```swift
-func createAIService(promptManager: PromptManager) -> AIService?
-```
+- `createAIService(promptManager:)` — returns an optional `AIService?`; prints errors internally and returns `nil` on failure
 
 **State Update Methods**
-```swift
-func updateLastUsed()
-```
+- `updateLastUsed()` — sets `lastUsed` to the current date
 
 **Validation Methods**
-```swift
-var isConfigured: Bool { get }
-private func isValidURL(_ string: String) -> Bool
-```
+- `isConfigured: Bool` — computed property combining URL and model checks
+- `isValidURL(_:)` — private helper taking a `String`, returning `Bool`
 
 ### Testing Patterns
 
@@ -135,20 +129,8 @@ private func isValidURL(_ string: String) -> Bool
 - Apply accessibility requirements from SwiftUISpec.md
 
 **State Management Pattern (Direct @State)**
-```swift
-// Views manage state directly - no ViewModel layer
-struct LLMConnectionListView: View {
-    @State private var llmConnections: [LLMConnection] = []
-    @State private var searchText = ""
-    @State private var showingDeleteConfirmation = false
 
-    // Data fetched via ModelContext directly
-    private func loadConnections() {
-        let descriptor = FetchDescriptor<LLMConnection>()
-        llmConnections = (try? modelContext.fetch(descriptor)) ?? []
-    }
-}
-```
+Views manage state directly with no ViewModel layer. `LLMConnectionListView` holds `@State private var llmConnections: [LLMConnection]`, `searchText: String`, and `showingDeleteConfirmation: Bool` as direct state properties. Data is loaded by calling `modelContext.fetch(FetchDescriptor<LLMConnection>())` directly inside a helper method — not through `@Query`.
 
 **SwiftUI + SwiftData Integration**
 - Use manual `ModelContext` fetch for data loading (not @Query)

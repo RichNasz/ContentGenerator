@@ -26,22 +26,17 @@ This implementation must follow patterns and standards defined in the common spe
 
 ### ExportableFileAttachment Properties
 
-`ExportableFileAttachment` carries both metadata and (when available) the raw file bytes:
+`ExportableFileAttachment` carries both metadata and (when available) the raw file bytes. It is a `public struct` conforming to `Codable` and `Sendable` with all `let` properties:
 
-```swift
-public struct ExportableFileAttachment: Codable, Sendable {
-    public let originalFileName: String
-    public let originalFilePath: String?    // Resolved at export time; informational only
-    public let fileExtension: String?
-    public let fileSizeBytes: Int64
-    public let fileContentBase64: String?   // Base64-encoded raw bytes; nil for inaccessible legacy attachments
-    public let createdAt: Date
-    public let modifiedAt: Date
-}
-```
+- `originalFileName: String` — original file name at attach time
+- `originalFilePath: String?` — path resolved at export time; informational only
+- `fileExtension: String?` — file extension (e.g. "md", "txt")
+- `fileSizeBytes: Int64` — file size in bytes
+- `fileContentBase64: String?` — base64-encoded raw bytes; `nil` for inaccessible legacy attachments
+- `createdAt: Date` — attachment creation date
+- `modifiedAt: Date` — attachment last-modified date
 
-- `fileContentBase64` is optional for backward compatibility: old exports that omit it decode to `nil` automatically (Swift `Codable` nil-for-missing behavior)
-- Importers write the decoded bytes to `bundle/projects/<uuid>/attachments/<originalFileName>` when the field is present; otherwise the attachment is imported as inaccessible
+`fileContentBase64` is optional for backward compatibility: old exports that omit it decode to `nil` automatically via Swift `Codable` nil-for-missing behavior. Importers write the decoded bytes to `bundle/projects/<uuid>/attachments/<originalFileName>` when the field is present; otherwise the attachment is imported as inaccessible.
 
 ### Property Naming
 
@@ -191,13 +186,8 @@ public struct ExportableFileAttachment: Codable, Sendable {
 ### File Organization
 
 **Recommended Structure**
-```
-Sources/ProjectExchange/
-├── Models/           # Transfer object structs
-├── Enums/            # Status and type enumerations
-├── Services/         # Serialization service
-└── Errors/           # Error type definitions
-```
+
+Organize `Sources/ProjectExchange/` into four subdirectories: `Models/` for transfer object structs, `Enums/` for status and type enumerations, `Services/` for the serialization service, and `Errors/` for error type definitions.
 
 ## Versioning Patterns
 

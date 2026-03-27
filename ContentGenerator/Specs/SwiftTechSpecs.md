@@ -1,7 +1,7 @@
 # Swift Technical Specifications
 
 ## Purpose
-This document provides Swift-specific implementation guidance for functionality defined in FunctionalSpecs.md. It contains code signatures, architectural patterns, and SwiftData model definitions - NOT complete implementations.
+This document provides Swift-specific implementation guidance for functionality defined in FunctionalSpecs.md. It describes architectural patterns, data model fields, service responsibilities, and implementation approaches — NOT complete code implementations.
 
 **Swift 6 + Default MainActor Context**: This project uses Swift 6 with default actor isolation set to MainActor, which significantly impacts concurrency patterns and class design.
 
@@ -32,332 +32,107 @@ This project follows patterns defined in the CommonSpecs for consistency and reu
 - Enum-driven navigation provides type safety and prevents invalid states
 
 ### Main Application Window Pattern (REQUIRED)
-```swift
-// Navigation destination enum - REQUIRED for type-safe navigation
-enum NavigationDestination: Hashable {
-    case project(ContentProject)
-    case llmConnections
-    case applicationSettings
-    // Add other destinations as needed
-}
 
-// Main application window with value-based NavigationSplitView
-struct ContentView: View {
-    @Query(sort: \ContentProject.modifiedAt, order: .reverse)
-    private var projects: [ContentProject]
+The main application window uses a `NavigationDestination: Hashable` enum to drive all sidebar navigation. All required elements:
 
-    // REQUIRED: Selection state for NavigationSplitView
-    @State private var selectedDestination: NavigationDestination?
-
-    var body: some View {
-        NavigationSplitView {
-            // Sidebar - List with selection binding and NavigationLink values
-            List(selection: $selectedDestination) {
-                Section("Projects") {
-                    ForEach(projects) { project in
-                        NavigationLink(value: NavigationDestination.project(project)) {
-                            ProjectSidebarRow(project: project)
-                        }
-                    }
-                }
-
-                Section("Settings") {
-                    NavigationLink("LLM Connections", value: NavigationDestination.llmConnections)
-                    NavigationLink("Application Settings", value: NavigationDestination.applicationSettings)
-                }
-            }
-        } detail: {
-            // Detail section switches on selection state
-            if let destination = selectedDestination {
-                switch destination {
-                case .project(let project):
-                    ProjectContentView(project: project)
-                case .llmConnections:
-                    LLMConnectionListView(modelContext: dataManager.createContext())
-                case .applicationSettings:
-                    ApplicationSettingsView()
-                }
-            } else {
-                ContentUnavailableView(
-                    "No Selection",
-                    systemImage: "sidebar.left",
-                    description: Text("Select a project or settings from the sidebar")
-                )
-            }
-        }
-    }
-}
-```
+- Define `NavigationDestination` as a `Hashable` enum with cases: `project(ContentProject)`, `llmConnections`, and `applicationSettings` (add others as needed)
+- Declare `@State private var selectedDestination: NavigationDestination?` in the view
+- Use `List(selection: $selectedDestination)` to bind the sidebar's selection state
+- Each sidebar item uses `NavigationLink(value: NavigationDestination.project(project))` — never `Button`
+- The detail column switches on `selectedDestination` using an `if let` + `switch` to render the appropriate view
+- Show `ContentUnavailableView` when `selectedDestination` is nil
+- `@Model` types used in enum cases must conform to `Hashable` using `id`-based `==` and `hash(into:)` implementations with `nonisolated` qualifier
 
 **CRITICAL DIFFERENCES from NavigationStack**:
-- List(selection:) binding is REQUIRED
+- `List(selection:)` binding is REQUIRED
 - Detail section switches on selection state directly
-- NO .navigationDestination(for:) modifier (that's for NavigationStack only!)
-- @State var selectedDestination is needed for detail routing
+- NO `.navigationDestination(for:)` modifier — that modifier is for `NavigationStack` only
+- `@State var selectedDestination` is needed for detail routing
 
 ### Anti-Patterns (DO NOT USE)
 
-#### Anti-Pattern 1: Using .navigationDestination with NavigationSplitView
-```swift
-// WRONG: .navigationDestination is for NavigationStack, NOT NavigationSplitView!
-NavigationSplitView {
-    List {
-        NavigationLink("Item", value: item)
-    }
-} detail: {
-    ContentUnavailableView("No Selection")  // Static view
-}
-.navigationDestination(for: Item.self) { item in  // WRONG API
-    DetailView(item: item)  // This will NEVER show!
-}
-```
+**Anti-Pattern 1: Using `.navigationDestination` with NavigationSplitView** — `.navigationDestination(for:)` is a `NavigationStack` modifier. Applying it to a `NavigationSplitView` compiles but never shows the destination view — the detail column remains static no matter what sidebar item is tapped.
 
-#### Anti-Pattern 2: Mixed Button and NavigationLink Navigation
-```swift
-// WRONG: Mixing Button-based and NavigationLink-based navigation
-struct BadSidebar: View {
-    @State private var selectedProject: ContentProject?  // Manual state
+**Anti-Pattern 2: Mixed Button and NavigationLink Navigation** — Using `Button { selectedProject = project }` for some items and `NavigationLink(...)` for others in the same `List` causes navigation to break after the first `NavigationLink` transition. All sidebar items must use `NavigationLink(value:)` exclusively.
 
-    var body: some View {
-        List {
-            ForEach(projects) { project in
-                Button {  // Button-based navigation
-                    selectedProject = project
-                } label: {
-                    Text(project.name)
-                }
-            }
-
-            NavigationLink("Settings") {  // Mixed with NavigationLink
-                SettingsView()
-            }
-        }
-    }
-}
-// This causes navigation to break after using NavigationLink!
-```
-
-#### Anti-Pattern 3: Missing List Selection Binding
-```swift
-// WRONG: NavigationLink without List selection binding
-NavigationSplitView {
-    List {  // No selection: binding
-        NavigationLink(value: item) {
-            Text(item.name)
-        }
-    }
-} detail: {
-    if let selection = ??? {  // Where does selection come from?
-        DetailView(selection)
-    }
-}
-```
+**Anti-Pattern 3: Missing List Selection Binding** — Using `List { ... }` without a `selection:` parameter means tapping a `NavigationLink(value:)` item has no connection to the detail column. The detail column has no source of truth for which item is selected.
 
 ### Navigation Structure Requirements
-- **Value-Based NavigationLink**: MANDATORY - All sidebar items must use NavigationLink with enum values
-- **List Selection Binding**: REQUIRED - List(selection:) must bind to selection state
-- **Detail Switches on Selection**: Detail section must switch on selectedDestination
-- **No .navigationDestination**: This modifier is for NavigationStack, NOT NavigationSplitView
-- **Hashable Destinations**: All destination types must conform to Hashable
+- **Value-Based NavigationLink**: MANDATORY — all sidebar items must use `NavigationLink` with enum values
+- **List Selection Binding**: REQUIRED — `List(selection:)` must bind to selection state
+- **Detail Switches on Selection**: Detail section must switch on `selectedDestination`
+- **No `.navigationDestination`**: This modifier is for `NavigationStack`, NOT `NavigationSplitView`
+- **Hashable Destinations**: All destination types must conform to `Hashable`
 - **Type Safety**: Enum ensures only valid destinations are possible
 
-### Navigation Destination Enum Pattern
-```swift
-// REQUIRED: Define all possible navigation destinations
-enum NavigationDestination: Hashable {
-    case project(ContentProject)  // ContentProject must be Hashable
-    case llmConnections
-    case applicationSettings
-    // Add more destinations as needed
-
-    // Hashable conformance automatic for enums with Hashable associated values
-}
-
-// For @Model types, ensure Hashable conformance
-extension ContentProject: Hashable {
-    nonisolated public static func == (lhs: ContentProject, rhs: ContentProject) -> Bool {
-        lhs.id == rhs.id
-    }
-
-    nonisolated public func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-}
-// Note: SwiftData's @Model macro provides Hashable automatically in many cases
-```
-
 ### NavigationSplitView Implementation Checklist
-- [ ] NavigationDestination enum defined with all destinations
-- [ ] All model types used in enum conform to Hashable
-- [ ] @State var selectedDestination declared in view
-- [ ] List(selection: $selectedDestination) binding present
-- [ ] Sidebar items use NavigationLink(value:) exclusively
-- [ ] Detail section switches on selectedDestination with if-let
-- [ ] NO .navigationDestination(for:) modifier (that's for NavigationStack!)
+- [ ] `NavigationDestination` enum defined with all destinations
+- [ ] All model types used in enum conform to `Hashable`
+- [ ] `@State var selectedDestination` declared in view
+- [ ] `List(selection: $selectedDestination)` binding present
+- [ ] Sidebar items use `NavigationLink(value:)` exclusively
+- [ ] Detail section switches on `selectedDestination` with if-let
+- [ ] NO `.navigationDestination(for:)` modifier (that's for NavigationStack!)
 - [ ] No Button-based navigation mixed with NavigationLink
 
 ### State Management Pattern (Direct @State/@Bindable)
 
 This project does **not** use ViewModels. Views manage state directly using SwiftUI property wrappers:
 
-```swift
-// Views use direct state management - no ViewModel layer
-struct ProjectDetailView: View {
-    @Bindable var project: ContentProject
-    @State private var showingError = false
-    @State private var errorMessage = ""
-    @State private var specificationSections: [SpecificationSectionData] = []
-    @State private var draggingSectionId: UUID?
-
-    var body: some View {
-        // View body uses @Bindable for two-way binding to model properties
-        // and @State for local UI state
-    }
-}
-
-struct SomeListView: View {
-    @State private var items: [SomeModel] = []
-    @State private var searchText = ""
-    @State private var showingDeleteConfirmation = false
-
-    // Data fetched via ModelContext, not through a ViewModel
-    private func loadItems() {
-        let context = modelContext
-        let descriptor = FetchDescriptor<SomeModel>()
-        items = (try? context.fetch(descriptor)) ?? []
-    }
-}
-```
+- `@Bindable var project: ContentProject` for two-way binding to SwiftData model properties
+- `@State private var` for all local UI state (error flags, loading states, transient data such as section lists or drag state)
+- Data is fetched inside `.task` handlers or helper methods by calling `modelContext.fetch(FetchDescriptor<T>(...))` directly — no intermediate ViewModel
 
 ### Service Layer Patterns
 
 #### ProjectDataManager
-```swift
-// Manages the SwiftData ModelContainer for the application
-@Observable
-final class ProjectDataManager {
-    private let container: ModelContainer
-    let bundleURL: URL  // Stored at init time; exposed for services that resolve bundle-relative file paths
+`ProjectDataManager` is an `@Observable final class` that manages the SwiftData `ModelContainer` for the application. No explicit `@MainActor` — default isolation applies.
 
-    init(bundleURL: URL) throws {
-        self.bundleURL = bundleURL
-        // Creates ModelContainer with all app models, stored within the bundle
-        container = try ModelContainer(
-            for: Schema([
-                ContentProject.self,
-                ContentSpecification.self,
-                SpecificationSection.self,
-                GeneratedContentData.self,
-                FileAttachment.self,
-                ApplicationSettings.self,
-                LLMConnection.self   // From LLMmanagement package
-            ]),
-            configurations: ModelConfiguration(url: bundleURL.appending(path: "swiftdata/default.store"))
-        )
-    }
+Stored properties:
+- `bundleURL: URL` — stored at init time; exposed publicly for services that resolve bundle-relative file paths
 
-    func getContainer() -> ModelContainer {
-        return container
-    }
-
-    func createContext() -> ModelContext {
-        return ModelContext(container)
-    }
-
-    /// Returns the `projects/<uuid>/attachments/` directory for a project, creating it if needed.
-    func attachmentsDirectory(for projectId: UUID) throws -> URL {
-        let dir = bundleURL
-            .appendingPathComponent("projects")
-            .appendingPathComponent(projectId.uuidString)
-            .appendingPathComponent("attachments")
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir
-    }
-}
-```
+Key methods:
+- `init(bundleURL: URL) throws` — creates `ModelContainer` with all app models (`ContentProject`, `ContentSpecification`, `SpecificationSection`, `GeneratedContentData`, `FileAttachment`, `ApplicationSettings`, `LLMConnection`) stored in a file at `bundleURL/swiftdata/default.store`
+- `getContainer() -> ModelContainer` — returns the underlying container
+- `createContext() -> ModelContext` — creates and returns a fresh `ModelContext` from the container
+- `attachmentsDirectory(for projectId: UUID) throws -> URL` — returns the `projects/<uuid>/attachments/` directory within the bundle, creating it if it does not exist
 
 #### GlobalSettingsService
-```swift
-// Settings service that operates independently of projects
-@MainActor
-@Observable
-final class GlobalSettingsService {
-    private let dataManager: ProjectDataManager
+`GlobalSettingsService` is a `@MainActor @Observable final class` for reading and writing application settings, independent of any project.
 
-    init(dataManager: ProjectDataManager) {
-        self.dataManager = dataManager
-    }
-
-    func getSettings() async throws -> ApplicationSettings {
-        let context = dataManager.createContext()
-        let descriptor = FetchDescriptor<ApplicationSettings>()
-        let settings = try context.fetch(descriptor)
-        return settings.first ?? ApplicationSettings.defaultSettings()
-    }
-
-    func updateSettings(_ settings: ApplicationSettings) async throws {
-        let context = dataManager.createContext()
-        settings.modifiedAt = Date()
-        try context.save()
-    }
-}
-```
+- `init(dataManager: ProjectDataManager)`
+- `getSettings() async throws -> ApplicationSettings` — fetches the first `ApplicationSettings` record, or creates a default instance if none exists
+- `updateSettings(_ settings: ApplicationSettings) async throws` — sets `modifiedAt` to the current date and saves the context
 
 #### Project Deletion Bundle Cleanup Pattern
 
 When a project is deleted in `confirmDeleteProjects()` (ContentView), its `projects/<uuid>/` directory must be removed from the bundle after the SwiftData save succeeds:
 
-1. **Capture IDs before deletion**: Map `offsets → project UUIDs` while the `@Query` objects are still live (before `context.delete` is called)
+1. **Capture IDs before deletion**: Map offsets → project UUIDs while the `@Query` objects are still live (before `context.delete` is called)
 2. **Delete after save**: After `try context.save()`, iterate over the captured UUIDs and remove each project directory using `try? FileManager.default.removeItem(at:)`
 3. **Non-fatal**: Use `try?` so a missing directory (project had no attachments) does not interrupt cleanup of subsequent projects
 4. **Path construction**: `dataManager.bundleURL.appendingPathComponent("projects").appendingPathComponent(projectId.uuidString)` — stops at the project level (not the `attachments/` subdirectory) to clean up the full project footprint
 
-```swift
-// Inside confirmDeleteProjects(), after try context.save():
-let bundleURL = dataManager.bundleURL
-for projectId in projectIdsToRemove {
-    let projectDir = bundleURL
-        .appendingPathComponent("projects")
-        .appendingPathComponent(projectId.uuidString)
-    try? FileManager.default.removeItem(at: projectDir)
-}
-```
-
 This mirrors the non-fatal `try? FileManager.default.removeItem(at:)` pattern used in `FileAttachmentManager.removeAttachment(_:from:)`.
 
 #### BundleManager Pattern
-```swift
-// Manages bundle creation, opening, and restoration
-@MainActor
-@Observable
-final class BundleManager {
-    private(set) var bundleURL: URL?
-    var bundleState: BundleState = .noBundleSelected
+`BundleManager` is a `@MainActor @Observable final class` that manages bundle creation, opening, and restoration. Stored properties:
+- `bundleURL: URL?` (private setter)
+- `bundleState: BundleState`
 
-    func createNewBundle() async -> URL? { /* ... creates swiftdata/ and projects/ subdirs */ }
-    func openExistingBundle() async -> URL? { /* ... */ }
-    func restoreSavedBundle() -> URL? { /* ... */ }
+Methods:
+- `createNewBundle() async -> URL?` — creates a new `.cgspecs` bundle with `swiftdata/` and `projects/` subdirectories
+- `openExistingBundle() async -> URL?` — presents an open panel and returns the selected bundle URL
+- `restoreSavedBundle() -> URL?` — restores the previously-used bundle URL from persistent storage
+- `attachmentsDirectory(for projectId: UUID) throws -> URL` — returns the `projects/<uuid>/attachments/` path; throws `BundleManagerError.noBundleSelected` if no bundle is open
 
-    /// Returns the `projects/<uuid>/attachments/` directory within the bundle, creating it if needed.
-    /// - Throws: `BundleManagerError.noBundleSelected` if no bundle is open.
-    func attachmentsDirectory(for projectId: UUID) throws -> URL { /* ... */ }
-}
-
-enum BundleState: Sendable {
-    case noBundleSelected
-    case loading
-    case ready(URL)
-    case error(String)
-}
-
-enum BundleManagerError: LocalizedError {
-    case noBundleSelected
-}
-```
+Supporting types:
+- `BundleState` enum (Sendable): cases `noBundleSelected`, `loading`, `ready(URL)`, `error(String)`
+- `BundleManagerError` enum (LocalizedError): case `noBundleSelected`
 
 ### File Attachment Service Pattern
 
-The `FileAttachmentManager` handles file attachments by copying files into the `.cgspecs` bundle at attach time. The bundle's single security-scoped bookmark (held by `BundleManager`) covers all files inside it, eliminating per-file bookmark management.
+`FileAttachmentManager` handles file attachments by copying files into the `.cgspecs` bundle at attach time. The bundle's single security-scoped bookmark (held by `BundleManager`) covers all files inside it, eliminating per-file bookmark management.
 
 **Architecture Pattern:**
 - `@Observable` class with default MainActor isolation (no explicit `@MainActor` needed on the class)
@@ -365,47 +140,34 @@ The `FileAttachmentManager` handles file attachments by copying files into the `
 - Files stored at `bundle/projects/<uuid>/attachments/<filename>`; a relative path string is stored on `FileAttachment`
 - Legacy attachments (created before this pattern) use `securityScopedBookmarkData` as a fallback
 
-**`FileSelectionResult` (returned by `selectAndAttachFiles(to:)`):**
-```swift
-struct FileSelectionResult {
-    var attachments: [FileAttachment]  // Successfully created, ready to add to project
-    var duplicates: [(url: URL, existingFileName: String)]
-    // url: source URL of the new file the user selected
-    // existingFileName: the originalFileName of the conflicting existing FileAttachment record
-    //                   (used to look up the record via project.attachments.first(where:))
-}
-```
-`selectAndAttachFiles(to:)` catches `.duplicateAttachment` separately from other errors. New and duplicate files are returned together so the caller can add the new ones immediately and queue the duplicates for confirmation.
+**`FileSelectionResult`** (returned by `selectAndAttachFiles(to:)`):
+A struct with two properties:
+- `attachments: [FileAttachment]` — successfully created attachment records, ready to add to the project
+- `duplicates: [(url: URL, existingFileName: String)]` — files the user selected that already exist in the project; `url` is the source URL of the new file, `existingFileName` is the `originalFileName` of the conflicting existing record (used to look up the record via `project.attachments.first(where:)`)
 
-`selectAndAttachFiles(to:)` catch behaviour in the per-file loop:
+`selectAndAttachFiles(to:)` catches `.duplicateAttachment` separately from other errors. New and duplicate files are returned together so the caller can add the new ones immediately and queue the duplicates for confirmation. Per-file loop behavior:
 - `.duplicateAttachment(fileName:)` → appended to `result.duplicates`; processing continues for remaining files
 - Any other error → logged to console; file skipped; processing continues
-- If the user cancels the file picker (does not confirm): returns `FileSelectionResult(attachments: [], duplicates: [])` immediately
+- If the user cancels the file picker: returns an empty `FileSelectionResult` immediately
 
 **Bundle Storage Pattern:**
 - On attach: copy the user-selected file into `dataManager.attachmentsDirectory(for: project.id)`; store the relative path in `FileAttachment.relativeBundlePath`
-- Filename conflicts within the same project's attachments directory are resolved with a numeric suffix (`report-2.md`, etc.)
+- Filename conflicts within the same project's attachments directory resolved with a numeric suffix (`report-2.md`, etc.)
 - On access: resolve `dataManager.bundleURL.appendingPathComponent(relativeBundlePath)` directly — no `startAccessingSecurityScopedResource()` needed
 - On remove: call `FileAttachmentManager.removeAttachment(_:from:)` — deletes the physical bundle copy via `FileManager.default.removeItem(at:)` (using `try?` so a missing file is not an error), then removes the SwiftData record via `project.removeAttachment(_:)`. Views must NOT call `project.removeAttachment(_:)` directly; always go through `FileAttachmentManager`
 - On replace: call `FileAttachmentManager.replaceAttachment(_:withFileAt:)` — deletes the old bundle copy (`try?`), copies the new file using `existing.originalFileName` as the canonical destination name (normalises any previously suffixed path), and mutates the existing `FileAttachment` record in-place (same UUID, updated `relativeBundlePath`, `fileSizeBytes`, `isAccessible`, and `modifiedAt`). The SwiftData record is never removed and re-added; identity is preserved
 
-**`replaceAttachment(_ existing: FileAttachment, withFileAt sourceURL: URL) async throws` (FileAttachmentManager):**
+**`replaceAttachment(_:withFileAt:)` on `FileAttachmentManager`:**
 
-Signature:
-```swift
-@MainActor
-func replaceAttachment(_ existing: FileAttachment, withFileAt sourceURL: URL) async throws
-```
-
-Parameters:
-- `existing`: the in-place `FileAttachment` SwiftData record to update
-- `sourceURL`: the URL of the new file to copy into the bundle
+A `@MainActor async throws` method. Parameters:
+- `existing: FileAttachment` — the in-place SwiftData record to update
+- `sourceURL: URL` — the URL of the new file to copy into the bundle
 
 Execution sequence (all on MainActor):
 1. `validateFile(at: sourceURL)` — type, size, file-URL checks; throws on failure before touching anything
 2. Guard `existing.project?.id` — throws `.fileCopyFailed` if attachment has no associated project
 3. `try? FileManager.default.removeItem(at: oldURL)` — delete old bundle copy (non-fatal; continues if missing)
-4. `FileManager.default.copyItem(at: sourceURL, to: attachmentsDir.appendingPathComponent(existing.originalFileName))` — uses `originalFileName` as canonical destination (normalises any previously suffixed path from the old record); throws `.fileCopyFailed(error)` on copy failure
+4. `FileManager.default.copyItem(at: sourceURL, to: attachmentsDir.appendingPathComponent(existing.originalFileName))` — uses `originalFileName` as canonical destination; throws `.fileCopyFailed(error)` on copy failure
 5. Update existing record in-place: `relativeBundlePath`, `isAccessible = true`, `fileSizeBytes` (via `try?` resourceValues; non-fatal), `updateModifiedDate()`
 
 Error cases:
@@ -426,21 +188,19 @@ Error cases:
 - `.noBookmarkData` — legacy path: neither relative path nor bookmark available
 - `.bookmarkResolutionFailed(Error)` — legacy path: bookmark resolve failed
 - `.cannotAccessSecurityScopedResource` — legacy path: could not start accessing
-- `.fileTooLarge`, `.unsupportedFileType`, `.notAFileURL`, `.notARegularFile`, `.duplicateAttachment`, `.fileReadFailed`, `.unableToReadFileSize` — validation errors (unchanged)
+- `.fileTooLarge`, `.unsupportedFileType`, `.notAFileURL`, `.notARegularFile`, `.duplicateAttachment`, `.fileReadFailed`, `.unableToReadFileSize` — validation errors
 
 **Duplicate Confirmation Pattern (`FileAttachmentSection`):**
 
-Full `@State` properties relevant to attachment handling:
-```swift
-@State private var isLoading = false                                         // disables Add button; shown in file list
-@State private var showingError = false                                      // drives error .alert
-@State private var errorMessage = ""                                         // error .alert message text
-@State private var dragIsTargeted = false                                    // drives drop-zone highlight border
-@State private var pendingReplacements: [(url: URL, existingFileName: String)] = []
-@State private var showingReplaceConfirmation = false
-```
+The view maintains these `@State private var` properties for attachment handling:
+- `isLoading: Bool` — disables Add button; shown in file list
+- `showingError: Bool` — drives error `.alert`
+- `errorMessage: String` — error alert message text
+- `dragIsTargeted: Bool` — drives drop-zone highlight border
+- `pendingReplacements: [(url: URL, existingFileName: String)]` — queue of duplicates awaiting user confirmation
+- `showingReplaceConfirmation: Bool` — drives the confirmation dialog
 
-`showNextReplacement()` — sets `showingReplaceConfirmation = !pendingReplacements.isEmpty`.
+`showNextReplacement()` sets `showingReplaceConfirmation = !pendingReplacements.isEmpty`.
 
 **File-picker path (`addAttachments()`):**
 1. Call `attachmentManager.selectAndAttachFiles(to: project)` → `FileSelectionResult`
@@ -453,7 +213,7 @@ Full `@State` properties relevant to attachment handling:
 
 **`.confirmationDialog` (chained after `.alert` on the view body):**
 - Title: `"Replace \"<pendingReplacements.first?.existingFileName>\"?"`; `titleVisibility: .visible`
-- Message: `"A file named \"...<existingFileName>...\" is already attached... This cannot be undone."`
+- Message: warns that replacing cannot be undone
 - Button "Replace" (`role: .destructive`):
   1. Pop `pendingReplacements.first`
   2. Look up `existing = project.attachments.first(where: { $0.originalFileName == pending.existingFileName })`
@@ -463,7 +223,7 @@ Full `@State` properties relevant to attachment handling:
 
 ### Project Import/Export Service Pattern
 
-The `ProjectExportService` handles project import and export operations, following the established service patterns used by `GlobalSettingsService` and `FileAttachmentManager`.
+`ProjectExportService` handles project import and export operations, following the established service patterns used by `GlobalSettingsService` and `FileAttachmentManager`.
 
 **Architecture Pattern:**
 - Uses `@MainActor` and `@Observable` for UI integration
@@ -520,97 +280,39 @@ The application uses dedicated windows for content generation workflows, separat
 
 #### Dual-Endpoint Pattern (Both Generation Windows)
 
-Both generation windows import `SwiftChatCompletionsDSL` and `SwiftOpenResponsesDSL` and switch on `llmConnection.endpointType` in `generateContent()`:
-
-```swift
-switch llmConnection.endpointType {
-case .chatCompletions:
-    Task { /* SwiftChatCompletionsDSL path */ }
-case .responses:
-    Task { /* SwiftOpenResponsesDSL path */ }
-}
-```
+Both generation windows import `SwiftChatCompletionsDSL` and `SwiftOpenResponsesDSL` and switch on `llmConnection.endpointType` in `generateContent()` with a `switch` over the two cases (`.chatCompletions` and `.responses`), launching a `Task` for each path.
 
 **Chat Completions path** (`SectionContentGenerationWindow`, `ProjectContentGenerationWindow`):
-- `SwiftChatCompletionsDSL.LLMClient` + `ChatRequest` + `client.stream(request)`
-- Extract: `delta.choices.first?.delta.content`
-- Qualify builder params: `SwiftChatCompletionsDSL.Temperature(0.7)`, `SwiftChatCompletionsDSL.RequestTimeout(...)`, `SwiftChatCompletionsDSL.ResourceTimeout(...)`
-- Catch: `catch let error as SwiftChatCompletionsDSL.LLMError`
+- Use `SwiftChatCompletionsDSL.LLMClient` + `ChatRequest` + `client.stream(request)`
+- Extract streaming text from `delta.choices.first?.delta.content`
+- Qualify builder types with the module prefix: `SwiftChatCompletionsDSL.Temperature`, `SwiftChatCompletionsDSL.RequestTimeout`, `SwiftChatCompletionsDSL.ResourceTimeout`
+- Catch streaming errors as `SwiftChatCompletionsDSL.LLMError`
 
 **Responses path** (`SectionContentGenerationWindow`, `ProjectContentGenerationWindow`):
-- `SwiftOpenResponsesDSL.LLMClient` + `ToolSession(client:tools:[],maxIterations:1,handlers:[:])` + `session.stream(model:input:[User(msg)],configParams:)`
-- Extract: `if case .llm(let se) = event, case .contentPartDelta(let delta, _, _) = se`
-- Config params: `[any ResponseConfigParameter]` — `RequestTimeout`, `ResourceTimeout` (and `Instructions(buildSystemPrompt())` in `ProjectContentGenerationWindow`)
-- Catch: `catch let error as SwiftOpenResponsesDSL.LLMError`
+- Use `SwiftOpenResponsesDSL.LLMClient` + `ToolSession(client:tools:[],maxIterations:1,handlers:[:])` + `session.stream(model:input:[User(msg)],configParams:)`
+- Extract streaming text by matching `.llm` events and `.contentPartDelta` sub-events
+- Config params array type: `[any ResponseConfigParameter]` — includes `RequestTimeout`, `ResourceTimeout`, and in `ProjectContentGenerationWindow`, also `Instructions(buildSystemPrompt())`
+- Catch streaming errors as `SwiftOpenResponsesDSL.LLMError`
 
-**`formatLLMError` overloading pattern** (required when both DSLs imported):
-```swift
-private func formatLLMError(_ error: SwiftChatCompletionsDSL.LLMError) -> String { ... }
-private func formatLLMError(_ error: SwiftOpenResponsesDSL.LLMError) -> String { ... }
-```
-Swift resolves the correct overload by parameter type. Both have identical bodies (same case names). See `CodeLessonsLearned.md ERR-COMPILE-005` for the ambiguity details.
+**`formatLLMError` overloading pattern** (required when both DSLs are imported):
+Define two overloads of `private func formatLLMError(...)` — one accepting `SwiftChatCompletionsDSL.LLMError` and one accepting `SwiftOpenResponsesDSL.LLMError`. Both have identical bodies since both DSLs expose the same case names. Swift resolves the correct overload by parameter type. See `CodeLessonsLearned.md ERR-COMPILE-005` for the ambiguity details.
 
 **Throttled UI update pattern** (both paths, both windows):
-```swift
-var lastUpdateTime = Date.distantPast
-let updateInterval: TimeInterval = 0.05
-// ... in streaming loop:
-let now = Date()
-if now.timeIntervalSince(lastUpdateTime) >= updateInterval {
-    lastUpdateTime = now
-    await MainActor.run { generatedContent = fullContent }
-}
-// After loop:
-await MainActor.run { generatedContent = fullContent }
-```
+Track a `lastUpdateTime: Date` (initially `.distantPast`) alongside the accumulated full content string. During streaming, check if at least 50ms have elapsed since the last update before assigning `generatedContent` via `MainActor.run`. Always perform one final assignment after the loop ends to flush any remaining content. This throttles SwiftUI diffing to ~20 fps without dropping content.
 
 #### LLM Picker Grouping Pattern (Both Standard Generation Windows)
 
-Both `SectionContentGenerationWindow` and `ProjectContentGenerationWindow` group connections by endpoint type and show a local/cloud locality icon using:
+Both `SectionContentGenerationWindow` and `ProjectContentGenerationWindow` group connections by endpoint type and show a locality icon.
 
-```swift
-// Computed properties — filter configuredLLMConnections by endpoint type
-private var chatCompletionsConnections: [LLMConnection] {
-    configuredLLMConnections.filter { $0.endpointType == .chatCompletions }
-}
-private var responsesConnections: [LLMConnection] {
-    configuredLLMConnections.filter { $0.endpointType == .responses }
-}
+**Computed filter properties** on the view:
+- `chatCompletionsConnections: [LLMConnection]` — filters `configuredLLMConnections` to `.chatCompletions` endpoint type
+- `responsesConnections: [LLMConnection]` — filters `configuredLLMConnections` to `.responses` endpoint type
 
-// Locality helper — checks base URL host against known local addresses
-private func isLocalConnection(_ connection: LLMConnection) -> Bool {
-    guard let components = URLComponents(string: connection.baseUrl),
-          let host = components.host?.lowercased() else { return false }
-    return host == "localhost" || host == "127.0.0.1"
-        || host == "0.0.0.0" || host == "::1" || host == "[::1]"
-}
-```
+**`isLocalConnection(_ connection: LLMConnection) -> Bool`** — private helper that parses the connection's `baseUrl` with `URLComponents`, lowercases the host, and returns `true` for `localhost`, `127.0.0.1`, `0.0.0.0`, `::1`, or `[::1]`.
 
-Picker structure inside the menu:
-```swift
-Picker("LLM", selection: $selectedLLMId) {
-    Text("Select LLM").tag(nil as UUID?)
-    if !chatCompletionsConnections.isEmpty {
-        Section("Chat Completions") {
-            ForEach(chatCompletionsConnections, id: \.id) { connection in
-                Label(connection.name, systemImage: isLocalConnection(connection) ? "house.fill" : "cloud")
-                    .tag(connection.id as UUID?)
-            }
-        }
-    }
-    if !responsesConnections.isEmpty {
-        Section("Responses") {
-            ForEach(responsesConnections, id: \.id) { connection in
-                Label(connection.name, systemImage: isLocalConnection(connection) ? "house.fill" : "cloud")
-                    .tag(connection.id as UUID?)
-            }
-        }
-    }
-}
-.pickerStyle(.menu)
-```
+**Picker structure**: A `Picker("LLM", selection: $selectedLLMId)` with `.pickerStyle(.menu)`. The picker body contains a "Select LLM" placeholder with `nil` tag, then conditionally a `Section("Chat Completions")` (when `!chatCompletionsConnections.isEmpty`) and a `Section("Responses")` (when `!responsesConnections.isEmpty`). Each connection row uses `Label(connection.name, systemImage: isLocalConnection(connection) ? "house.fill" : "cloud")` tagged with `connection.id as UUID?`.
 
-The agent window (`ProjectAgentGenerationWindow` in `AgentGen`) applies `isLocalConnection()` with the same logic (already defined there) and filters `configuredLLMConnections` to `.responses` only at source. Icons: `"house.fill"` for local, `"cloud"` for cloud/remote connections.
+The agent window (`ProjectAgentGenerationWindow` in `AgentGen`) applies `isLocalConnection()` with the same logic and filters `configuredLLMConnections` to `.responses` only at source. Icons: `"house.fill"` for local, `"cloud"` for cloud/remote connections.
 
 ### Agent Generation Window Pattern (AgentGen Package)
 
@@ -635,45 +337,34 @@ Only `LLMConnection` instances with `endpointType == .responses` appear in the p
 **Key constraints:**
 - No `@Query` anywhere in the package — use manual `modelContext.fetch(FetchDescriptor<T>(...))` (see ERR-SWIFTDATA-001)
 - Backend `run()` methods use `AsyncThrowingStream.makeStream()` + `Task { @MainActor in }` + static methods to avoid `sending` data race errors (see AgentGen CodeLessonsLearned ERR-COMPILE-003)
-- See `AgentGen/Specs/SwiftTechSpecs.md` for full type definitions and implementation details
+- See `AgentGen/Specs/SwiftTechSpecs.md` for full type descriptions and implementation details
 
 ### LLM Integration Patterns
 
 #### OpenAI Endpoint Type
-The LLMmanagement package defines `OpenAIEndpointType` with two cases:
-```swift
-enum OpenAIEndpointType: String, CaseIterable, Codable {
-    case chatCompletions = "chat_completions"
-    case responses = "responses"
+`OpenAIEndpointType` is a `String`-backed enum in the LLMmanagement package, conforming to `CaseIterable` and `Codable`. Cases:
+- `chatCompletions` (raw value: `"chat_completions"`)
+- `responses` (raw value: `"responses"`)
 
-    var defaultPath: String { /* ... */ }
-    var displayName: String { /* ... */ }
-}
-```
+Computed properties: `defaultPath: String` (returns the standard OpenAI path for each endpoint) and `displayName: String` (returns a human-readable label).
 
 #### LLM Connection Model (from LLMmanagement package)
-The `LLMConnection` model lives in the LLMmanagement package and is a SwiftData `@Model`:
-```swift
-@Model
-final class LLMConnection {
-    @Attribute(.unique) var id: UUID
-    var name: String
-    var baseUrl: String
-    var urlPath: String?
-    var endpointType: OpenAIEndpointType
-    var apiKey: String
-    var selectedModel: String
-    var requestTimeoutSeconds: Int  // Clamped 60-600
-    var createdAt: Date
-    var lastUsed: Date
+`LLMConnection` is a SwiftData `@Model final class` in the LLMmanagement package. Fields:
+- `id: UUID` — `@Attribute(.unique)` unique identifier
+- `name: String` — display name
+- `baseUrl: String` — base URL of the service
+- `urlPath: String?` — optional custom path override
+- `endpointType: OpenAIEndpointType` — chat completions or responses endpoint
+- `apiKey: String` — bearer token (empty for unauthenticated local services)
+- `selectedModel: String` — model identifier to use
+- `requestTimeoutSeconds: Int` — clamped to 60–600 seconds
+- `createdAt: Date` and `lastUsed: Date` — tracking timestamps
 
-    var fullApiUrl: String { /* combines baseUrl + urlPath or endpointType.defaultPath */ }
-    var isConfigured: Bool { /* validates URL format and model selection */ }
+Computed properties:
+- `fullApiUrl: String` — combines `baseUrl` + `urlPath` (if set) or `endpointType.defaultPath`
+- `isConfigured: Bool` — validates URL format and non-empty model selection; API key is optional
 
-    // Copy initializer for updates preserving identity
-    init(updatingFrom original: LLMConnection, ...) { /* ... */ }
-}
-```
+Copy initializer `init(updatingFrom original: LLMConnection, ...)` creates an updated connection while preserving identity.
 
 ## Error Handling Patterns
 
@@ -681,30 +372,25 @@ final class LLMConnection {
 Error handling follows patterns defined in [SwiftCodeGeneration.md](../../../CommonSpecs/SwiftCodeGeneration.md#error-types-with-sendable) for Sendable conformance and proper actor isolation.
 
 ### ContentGenerator-Specific Error Types
-```swift
-enum ContentGeneratorError: LocalizedError, Sendable {
-    case aiServiceUnavailable
-    case invalidContentRequest(String)
-    case contentGenerationFailed(String)
-    case projectIsolationViolation
-    case projectNotFound(UUID)
-    case specificationRequired(String)
-    case settingsAccessError
-    case llmConnectionFailed(String)
-    case llmConfigurationInvalid(String)
-    case noLLMConnectionsAvailable
-    case chatCompletionsAPIError(String)
-    case chatCompletionsConfigurationMissing
-    case swiftChatCompletionsDSLError(String)
+`ContentGeneratorError` is an enum conforming to `LocalizedError` and `Sendable`. Cases:
+- `aiServiceUnavailable`
+- `invalidContentRequest(String)`
+- `contentGenerationFailed(String)`
+- `projectIsolationViolation`
+- `projectNotFound(UUID)`
+- `specificationRequired(String)`
+- `settingsAccessError`
+- `llmConnectionFailed(String)`
+- `llmConfigurationInvalid(String)`
+- `noLLMConnectionsAvailable`
+- `chatCompletionsAPIError(String)`
+- `chatCompletionsConfigurationMissing`
+- `swiftChatCompletionsDSLError(String)`
 
-    var errorDescription: String? { /* ... */ }
-    var failureReason: String? { /* ... */ }
-    var recoverySuggestion: String? { /* ... */ }
-}
-```
+Implement `errorDescription: String?`, `failureReason: String?`, and `recoverySuggestion: String?` for all cases.
 
 ### Error Presentation and Recovery
-Error presentation and recovery patterns follow the universal patterns defined in [SwiftUIWithoutMVVM.md](../../../CommonSpecs/SwiftUIWithoutMVVM.md) using @State for error state management in views.
+Error presentation and recovery patterns follow the universal patterns defined in [SwiftUIWithoutMVVM.md](../../../CommonSpecs/SwiftUIWithoutMVVM.md) using `@State` for error state management in views.
 
 ## Testing Patterns
 
@@ -724,263 +410,85 @@ Testing focuses on project-specific functionality:
 ContentGenerator uses the universal SwiftData patterns defined in [SwiftDataPatterns.md](../../../CommonSpecs/SwiftDataPatterns.md) as the foundation for all data models and implements project-specific data isolation requirements.
 
 ### Project-Specific Model Definitions
-```swift
-@Model
-final class ContentProject: PersistentModel {
-    var id: UUID
-    var name: String
-    var projectDescription: String?
-    var systemPrompt: String?
-    var llmConnectionId: UUID?
-    var createdAt: Date
-    var modifiedAt: Date
-    var status: ProjectStatus
 
-    // Proper relationship syntax (prevents ERR-DATA-001)
-    @Relationship(deleteRule: .cascade, inverse: \ContentSpecification.project)
-    var specification: ContentSpecification?
+**`ContentProject`** — `@Model final class` representing a content generation project. Fields:
+- `id: UUID` — auto-generated unique identifier
+- `name: String` — project display name
+- `projectDescription: String?` — optional description
+- `systemPrompt: String?` — optional system prompt for generation
+- `llmConnectionId: UUID?` — reference to the selected `LLMConnection.id`
+- `createdAt: Date` and `modifiedAt: Date` — tracking timestamps
+- `status: ProjectStatus` — current project status
 
-    @Relationship(deleteRule: .cascade)
-    var generatedContent: [GeneratedContentData]
+Relationships:
+- `specification: ContentSpecification?` — `@Relationship(deleteRule: .cascade, inverse: \ContentSpecification.project)`
+- `generatedContent: [GeneratedContentData]` — `@Relationship(deleteRule: .cascade)`
+- `attachments: [FileAttachment]` — `@Relationship(deleteRule: .cascade)`
 
-    @Relationship(deleteRule: .cascade)
-    var attachments: [FileAttachment]
+Methods: `updateModifiedDate()` sets `modifiedAt` to the current date.
 
-    init(name: String) {
-        self.id = UUID()
-        self.name = name
-        self.createdAt = Date()
-        self.modifiedAt = Date()
-        self.status = .active
-        self.generatedContent = []
-        self.attachments = []
-    }
+**`SpecificationSection`** — `@Model final class` representing one section in a project's specification. Fields:
+- `id: UUID` — auto-generated unique identifier
+- `name: String` — section name
+- `sectionDescription: String?` — optional description for organizational clarity
+- `content: String` — the section body text
+- `orderIndex: Int` — position in the ordered section list
+- `contentGenerationPrompt: String?` — prompt for AI-assisted section content generation
+- `contentUsagePrompt: String?` — prompt for how section content should be applied in generation
+- `isEnabled: Bool` — whether this section participates in content generation
+- `assistantLLMConnectionId: UUID?` — section-level LLM assistant connection reference
+- `createdAt: Date` and `modifiedAt: Date` — tracking timestamps
+- `specification: ContentSpecification?` — inverse relationship back to the parent specification
 
-    // Update timestamp on changes
-    func updateModifiedDate() {
-        modifiedAt = Date()
-    }
-}
+Methods: `updateModifiedDate()` sets `modifiedAt` to the current date.
 
-@Model
-final class SpecificationSection: PersistentModel {
-    var id: UUID
-    var name: String
-    var sectionDescription: String?       // Optional description for organizational clarity
-    var content: String
-    var orderIndex: Int
-    var contentGenerationPrompt: String?  // Prompt for AI-assisted section content generation
-    var contentUsagePrompt: String?       // Prompt for how section content should be applied
-    var isEnabled: Bool                   // Include/exclude from generation
-    var assistantLLMConnectionId: UUID?   // Section-level LLM assistant connection
-    var createdAt: Date
-    var modifiedAt: Date
+**`ContentSpecification`** — `@Model final class` representing the full specification for a project. Fields:
+- `id: UUID` — auto-generated unique identifier
+- `createdAt: Date` and `modifiedAt: Date` — tracking timestamps
+- `project: ContentProject?` — inverse relationship (required to prevent ERR-DATA-001)
+- `sections: [SpecificationSection]` — `@Relationship(deleteRule: .cascade, inverse: \SpecificationSection.specification)`
 
-    // Inverse relationship to specification
-    var specification: ContentSpecification?
+Methods:
+- `updateModifiedDate()` — sets `modifiedAt` to the current date
+- `addSection(name:content:) -> SpecificationSection` — convenience method that creates a new `SpecificationSection` with the next `orderIndex`, sets its `specification` inverse, appends it to `sections`, and calls `updateModifiedDate()` before returning the new section
 
-    init(name: String, content: String, orderIndex: Int = 0) {
-        self.id = UUID()
-        self.name = name
-        self.sectionDescription = nil
-        self.content = content
-        self.orderIndex = orderIndex
-        self.contentGenerationPrompt = nil
-        self.contentUsagePrompt = nil
-        self.isEnabled = true
-        self.createdAt = Date()
-        self.modifiedAt = Date()
-    }
+**`GeneratedContentData`** — `@Model final class` representing one generation result for a project. Fields:
+- `id: UUID` — auto-generated unique identifier
+- `text: String` — the generated content text
+- `metadataJSON: String?` — flexible metadata stored as a JSON string
+- `llmConnectionId: UUID?` — reference to the LLM connection used for generation
+- `createdAt: Date` and `modifiedAt: Date` — tracking timestamps
+- `project: ContentProject?` — inverse relationship
 
-    func updateModifiedDate() {
-        modifiedAt = Date()
-    }
-}
+Computed property `metadata: [String: Any]?` with getter (deserializes `metadataJSON`) and setter (serializes to `metadataJSON` and updates `modifiedAt`).
 
-@Model
-final class ContentSpecification: PersistentModel {
-    var id: UUID
-    var createdAt: Date
-    var modifiedAt: Date
-
-    // Inverse relationship to project (prevents ERR-DATA-001)
-    var project: ContentProject?
-
-    // One-to-many relationship with sections
-    @Relationship(deleteRule: .cascade, inverse: \SpecificationSection.specification)
-    var sections: [SpecificationSection]
-
-    init() {
-        self.id = UUID()
-        self.createdAt = Date()
-        self.modifiedAt = Date()
-        self.sections = []
-    }
-
-    func updateModifiedDate() {
-        modifiedAt = Date()
-    }
-
-    // Convenience methods for section management
-    func addSection(name: String, content: String) -> SpecificationSection {
-        let newSection = SpecificationSection(
-            name: name,
-            content: content,
-            orderIndex: sections.count
-        )
-        newSection.specification = self
-        sections.append(newSection)
-        updateModifiedDate()
-        return newSection
-    }
-}
-
-@Model
-final class GeneratedContentData: PersistentModel {
-    var id: UUID
-    var text: String                      // The generated content text
-    var metadataJSON: String?             // Flexible metadata stored as JSON
-    var llmConnectionId: UUID?            // Reference to the LLM connection used
-    var createdAt: Date
-    var modifiedAt: Date
-
-    // Inverse relationship to project
-    var project: ContentProject?
-
-    init(text: String, metadata: [String: Any]? = nil, llmConnectionId: UUID? = nil) {
-        self.id = UUID()
-        self.text = text
-        self.llmConnectionId = llmConnectionId
-        self.createdAt = Date()
-        self.modifiedAt = Date()
-
-        // Serialize metadata to JSON
-        if let metadata = metadata {
-            self.metadataJSON = try? String(
-                data: JSONSerialization.data(withJSONObject: metadata),
-                encoding: .utf8
-            )
-        }
-    }
-
-    // Computed property for metadata access
-    var metadata: [String: Any]? {
-        get {
-            guard let json = metadataJSON,
-                  let data = json.data(using: .utf8) else { return nil }
-            return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        }
-        set {
-            if let value = newValue {
-                metadataJSON = try? String(
-                    data: JSONSerialization.data(withJSONObject: value),
-                    encoding: .utf8
-                )
-            } else {
-                metadataJSON = nil
-            }
-            modifiedAt = Date()
-        }
-    }
-}
-
-@Model
-final class FileAttachment: PersistentModel {
-    var id: UUID
-    var originalFileName: String          // Original file name when attached
-    var fileExtension: String?            // File extension (e.g., "txt", "md")
-    var fileSizeBytes: Int64              // File size in bytes
-    var securityScopedBookmarkData: Data? // Legacy: security-scoped bookmark (kept for migration; nil on new attachments)
-    var relativeBundlePath: String?       // Path relative to bundle root, e.g. "projects/<uuid>/attachments/report.md"
-    var isAccessible: Bool                // Whether the file is currently accessible
-    var createdAt: Date
-    var modifiedAt: Date
-
-    // Inverse relationship to project
-    var project: ContentProject?
-
-    init(originalFileName: String, fileSizeBytes: Int64) {
-        self.id = UUID()
-        self.originalFileName = originalFileName
-        self.fileExtension = URL(fileURLWithPath: originalFileName).pathExtension.lowercased()
-        self.fileSizeBytes = fileSizeBytes
-        self.securityScopedBookmarkData = nil
-        self.relativeBundlePath = nil
-        self.isAccessible = true
-        self.createdAt = Date()
-        self.modifiedAt = Date()
-    }
-}
-```
+**`FileAttachment`** — `@Model final class` representing a file attached to a project. Fields:
+- `id: UUID` — auto-generated unique identifier
+- `originalFileName: String` — the original file name at attach time
+- `fileExtension: String?` — file extension (e.g. "txt", "md"), derived from `originalFileName` at init
+- `fileSizeBytes: Int64` — file size in bytes
+- `securityScopedBookmarkData: Data?` — legacy bookmark data (kept for migration; `nil` on new attachments)
+- `relativeBundlePath: String?` — path relative to bundle root (e.g. `"projects/<uuid>/attachments/report.md"`)
+- `isAccessible: Bool` — whether the file is currently accessible
+- `createdAt: Date` and `modifiedAt: Date` — tracking timestamps
+- `project: ContentProject?` — inverse relationship
 
 ### Application Settings Model
-```swift
-@Model
-final class ApplicationSettings {
-    var id: UUID
-    var aiServiceEndpoint: String
-    var aiServiceAPIKey: String
-    var appearanceTheme: AppearanceTheme
-    var autoSaveEnabled: Bool
-    var dataBackupLocation: String?
-    var createdAt: Date
-    var modifiedAt: Date
 
-    init(
-        aiServiceEndpoint: String = "",
-        aiServiceAPIKey: String = "",
-        appearanceTheme: AppearanceTheme = .system,
-        autoSaveEnabled: Bool = true,
-        dataBackupLocation: String? = nil
-    ) {
-        self.id = UUID()
-        self.aiServiceEndpoint = aiServiceEndpoint
-        self.aiServiceAPIKey = aiServiceAPIKey
-        self.appearanceTheme = appearanceTheme
-        self.autoSaveEnabled = autoSaveEnabled
-        self.dataBackupLocation = dataBackupLocation
-        self.createdAt = Date()
-        self.modifiedAt = Date()
-    }
+**`ApplicationSettings`** — `@Model final class` for global application settings. Fields:
+- `id: UUID` — auto-generated unique identifier
+- `aiServiceEndpoint: String` — AI service base URL
+- `aiServiceAPIKey: String` — API key
+- `appearanceTheme: AppearanceTheme` — theme preference
+- `autoSaveEnabled: Bool` — whether auto-save is active
+- `dataBackupLocation: String?` — optional backup path
+- `createdAt: Date` and `modifiedAt: Date` — tracking timestamps
 
-    static func defaultSettings() -> ApplicationSettings {
-        return ApplicationSettings()
-    }
-}
+Static method `defaultSettings() -> ApplicationSettings` returns a new instance with all defaults.
 
-enum AppearanceTheme: String, CaseIterable, Codable, Sendable {
-    case light = "light"
-    case dark = "dark"
-    case system = "system"
+**`AppearanceTheme`** — `String`-backed enum conforming to `CaseIterable`, `Codable`, `Sendable`. Cases: `light`, `dark`, `system`. Each has a `displayName: String` computed property returning the human-readable label.
 
-    var displayName: String {
-        switch self {
-        case .light: return "Light"
-        case .dark: return "Dark"
-        case .system: return "System"
-        }
-    }
-}
-```
-
-### Enum Support (String-Backed for SwiftData)
-```swift
-enum ProjectStatus: String, CaseIterable, Codable, Sendable {
-    case draft = "draft"
-    case active = "active"
-    case generating = "generating"
-    case completed = "completed"
-
-    var displayName: String {
-        switch self {
-        case .draft: return "Draft"
-        case .active: return "Active"
-        case .generating: return "Generating..."
-        case .completed: return "Completed"
-        }
-    }
-}
-```
+**`ProjectStatus`** — `String`-backed enum conforming to `CaseIterable`, `Codable`, `Sendable`. Cases: `draft`, `active`, `generating`, `completed`. Each has a `displayName: String` computed property.
 
 ## SwiftUI Layout Best Practices
 
@@ -988,132 +496,53 @@ enum ProjectStatus: String, CaseIterable, Codable, Sendable {
 
 #### Container vs Content Responsibility
 SwiftUI follows a clear separation between containers and content for sizing:
-
-- **Containers control sizing**: NavigationSplitView, VStack, HStack determine available space
+- **Containers control sizing**: `NavigationSplitView`, `VStack`, `HStack` determine available space
 - **Content adapts naturally**: Views should specify internal layout only (padding, alignment, spacing)
 - **Avoid fighting the framework**: Trust SwiftUI's intrinsic sizing and layout system
 
 #### NavigationSplitView Layout Patterns
 
-##### Correct Pattern - Natural Content Sizing
-```swift
-// Container manages all sizing
-NavigationSplitView {
-    // Sidebar content - no size specifications
-    VStack {
-        // Internal layout only
-        Text("Projects")
-            .padding()
-    }
-} detail: {
-    // Detail content - no size specifications
-    VStack {
-        // Internal layout only
-        List {
-            // Content flows naturally
-        }
-        .padding()
-    }
-}
-```
+**Correct Pattern — Natural Content Sizing**: Content views inside `NavigationSplitView` columns should not specify frame dimensions. The container manages all sizing. Internal views may specify padding and alignment but should not add `.frame(maxHeight:)` or `.frame(minHeight:)` modifiers that fight the container.
 
-##### Anti-Pattern - Content Driving Container Size
-```swift
-// NEVER: Content specifying container dimensions
-NavigationSplitView {
-    VStack {
-        Text("Projects")
-    }
-    .frame(maxHeight: 600)  // Fights container
-} detail: {
-    List {
-        // Content
-    }
-    .frame(maxHeight: .infinity)  // Can cause window auto-resize
-    .frame(minHeight: 300)        // Rigid constraints
-}
-```
+**Anti-Pattern — Content Driving Container Size**: Never add `.frame(maxHeight: .infinity)` or `.frame(minHeight:)` on list or content views inside a `NavigationSplitView` column. These constraints request specific space from the container and can cause the window to auto-resize to fill the screen.
 
 ### Frame Modifier Guidelines
 
-#### When to Use Frame Modifiers
+#### Appropriate Usage
+- `.frame(maxWidth: .infinity)` — horizontal expansion within a container
+- `.frame(width:height:)` with specific values — for fixed-size content like buttons or images
+- `.frame(minWidth:)` — minimum content requirements
 
-##### Appropriate Usage
-```swift
-// Horizontal expansion within container
-.frame(maxWidth: .infinity)
-
-// Specific content sizing (buttons, images)
-.frame(width: 200, height: 44)
-
-// Minimum content requirements
-.frame(minWidth: 100)
-```
-
-##### Avoid These Patterns
-```swift
-// Multiple stacked frame modifiers
-.frame(maxHeight: 600)
-.frame(minHeight: 300)  // Overcomplicating
-
-// Height constraints in container content
-.frame(maxHeight: .infinity)  // Can interfere with container
-
-// Rigid size specifications
-.frame(width: .infinity, height: 600)  // Fighting natural flow
-```
+#### Avoid These Patterns
+- Multiple stacked `.frame()` modifiers on the same view — overcomplicates layout
+- `.frame(maxHeight: .infinity)` on content inside a `NavigationSplitView` column — can interfere with container sizing
+- Rigid height specifications on scrollable content — fights natural flow
 
 ### Common Layout Anti-Patterns
 
-#### Problem: Window Auto-Resizing
-**Symptom**: Window expands to screen height when view appears
-**Cause**: Content specifying unlimited height requirements
-**Solution**: Remove all height frame modifiers from content
+**Problem: Window Auto-Resizing**
+- Symptom: Window expands to screen height when view appears
+- Cause: A content view requests unlimited height (e.g. `.frame(maxHeight: .infinity)`)
+- Solution: Remove all height frame modifiers from content views; let the container determine height
 
-```swift
-// Causes window auto-resize
-VStack {
-    List { /* content */ }
-        .frame(maxHeight: .infinity)  // Requests unlimited space
-}
-
-// Natural sizing
-VStack {
-    List { /* content */ }
-        // No frame modifiers - adapts to container
-}
-```
-
-#### Problem: NavigationSplitView Column Conflicts
-**Symptom**: Columns don't resize proportionally with window
-**Cause**: Conflicting frame constraints on NavigationSplitView
-**Solution**: Remove external frame constraints, use only column width settings
-
-```swift
-// Conflicting constraints
-NavigationSplitView { /* content */ }
-    .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 400)
-    .frame(minWidth: 800, maxWidth: .infinity)  // Conflicts
-    .frame(minHeight: 500, maxHeight: 800)      // Conflicts
-
-// Clean column specification
-NavigationSplitView { /* content */ }
-    .navigationSplitViewColumnWidth(min: 200, ideal: 250)
-```
+**Problem: NavigationSplitView Column Conflicts**
+- Symptom: Columns don't resize proportionally with window
+- Cause: Conflicting frame constraints on the `NavigationSplitView` itself
+- Solution: Remove external `.frame(minHeight:maxHeight:)` constraints; use only `.navigationSplitViewColumnWidth(min:ideal:)` for column sizing
 
 ### SwiftUI Layout Debugging
 
 #### Identifying Layout Issues
-1. **Window auto-resizing**: Look for `.frame(maxHeight:)` in content
-2. **Rigid layouts**: Multiple stacked `.frame()` modifiers
-3. **Container conflicts**: Frame modifiers on NavigationSplitView
+1. **Window auto-resizing**: Look for `.frame(maxHeight:)` in content views
+2. **Rigid layouts**: Multiple stacked `.frame()` modifiers on the same view
+3. **Container conflicts**: Frame modifiers applied to the `NavigationSplitView` itself
 4. **Overcomplication**: More than one frame modifier per view
 
 #### Quick Fixes
-1. **Remove all height constraints** from list/content views
-2. **Use only essential frame modifiers** (maxWidth for expansion)
-3. **Trust container sizing** - let NavigationSplitView handle dimensions
-4. **Simplify progressively** - remove constraints until layout works naturally
+1. Remove all height constraints from list and content views
+2. Use only essential frame modifiers (`.frame(maxWidth: .infinity)` for horizontal expansion)
+3. Trust container sizing — let `NavigationSplitView` handle dimensions
+4. Simplify progressively: remove constraints until the layout works naturally
 
 ### Testing Layout Behavior
 
@@ -1125,19 +554,19 @@ NavigationSplitView { /* content */ }
 - [ ] No conflicting frame modifiers on same view
 
 #### Common Test Scenarios
-1. **Empty to populated transitions** (lists, content areas)
-2. **Window resizing** (small to large and vice versa)
-3. **Column proportions** (sidebar vs detail scaling)
-4. **Content overflow** (long lists, large content)
+1. Empty-to-populated transitions (lists, content areas)
+2. Window resizing (small to large and vice versa)
+3. Column proportions (sidebar vs detail scaling)
+4. Content overflow (long lists, large content)
 
 ### Migration from Rigid to Natural Layout
 
 #### Step-by-Step Process
-1. **Identify problematic constraints**: Search for `.frame(max/minHeight:)`
-2. **Remove constraints progressively**: Start with most restrictive
-3. **Test at each step**: Verify layout still works
-4. **Simplify container setup**: Remove external NavigationSplitView constraints
-5. **Validate responsiveness**: Test window resizing behavior
+1. Identify problematic constraints: search for `.frame(max/minHeight:)` on content views
+2. Remove constraints progressively, starting with the most restrictive
+3. Test at each step to verify the layout still works
+4. Simplify container setup: remove external `NavigationSplitView` constraints
+5. Validate responsiveness: test window resizing behavior
 
 This approach prevents the overcomplication that leads to layout conflicts and ensures SwiftUI can manage sizing naturally.
 
@@ -1156,43 +585,13 @@ This approach prevents the overcomplication that leads to layout conflicts and e
 - Minimize actor switching with bulk operations
 
 #### Task-Based Debouncing Pattern (preferred over DispatchWorkItem)
-```swift
-// CORRECT: Cancellable Task debounce — no GCD
-@State private var saveTask: Task<Void, Never>?
-
-private func scheduleSave() {
-    saveTask?.cancel()
-    saveTask = Task { @MainActor in
-        try? await Task.sleep(for: .milliseconds(500))
-        guard !Task.isCancelled else { return }
-        await performSave()
-    }
-}
-```
-Do NOT use `DispatchWorkItem` + `DispatchQueue.main.asyncAfter` for debouncing — this crosses the GCD/actor boundary and may produce concurrency warnings under strict concurrency checking.
+Store a `Task<Void, Never>?` as a `@State private var`. In the debounced method, cancel the previous task and start a new one that sleeps for the debounce interval (e.g. 500ms via `Task.sleep(for: .milliseconds(500))`), checks `Task.isCancelled` after waking, and only then performs the work. Do NOT use `DispatchWorkItem` + `DispatchQueue.main.asyncAfter` for debouncing — this crosses the GCD/actor boundary and may produce concurrency warnings under strict concurrency checking.
 
 ### SwiftData Performance
-```swift
-// Efficient batch operations
-nonisolated func batchUpdateProjects(_ updates: [ProjectUpdate]) async throws {
-    let context = ModelContext(modelContainer)
-
-    for update in updates {
-        if let project = try context.fetch(
-            FetchDescriptor<ContentProject>(
-                predicate: #Predicate { $0.id == update.projectId }
-            )
-        ).first {
-            project.updateFromBatch(update)
-        }
-    }
-
-    try context.save()
-}
-```
+Batch update operations should be `nonisolated` functions that create a fresh `ModelContext` from the container, iterate over updates using `FetchDescriptor` predicates to locate each record, apply mutations in-place, and call `context.save()` once at the end. This keeps bulk writes off the MainActor and reduces context switching.
 
 ---
 
-**Last Updated**: 2026-03-27 (added: LLM picker grouping pattern with Section/Label/isLocalConnection(); updated ProjectContentGenerationWindow to two-column layout; added locality icon guidance)
+**Last Updated**: 2026-03-27 (converted all code blocks to prose per no-code-in-specs rule; content otherwise matches prior revision)
 **Swift Version**: 6.2.3 (Xcode toolchain), language version 6.2, with Default MainActor Isolation
 **Important:** This document provides implementation guidance only. Actual code should be generated and compiled to ensure correctness. Update this document as architectural decisions are made during development.
