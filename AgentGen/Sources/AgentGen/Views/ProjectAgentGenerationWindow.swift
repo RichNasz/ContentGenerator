@@ -15,11 +15,10 @@ import LLMmanagement
 import SwiftOpenResponsesDSL
 import UniformTypeIdentifiers
 
-/// Three-column agent generation window for project-level content creation.
+/// Two-column agent generation window for project-level content creation.
 ///
 /// The agent inspects specification sections via tool calls before producing final content.
-/// Column 1: project overview (readonly). Column 2: controls and activity log.
-/// Column 3: generated content.
+/// Column 1: controls and activity feed. Column 2: generated content streaming in real time.
 ///
 /// Inference logic is delegated to ``AgentInferenceBackend`` implementations
 /// (e.g., ``AppleIntelligenceBackend``, ``OpenResponsesBackend``).
@@ -43,9 +42,6 @@ public struct ProjectAgentGenerationWindow: View {
     @State private var errorMessage: String? = nil
     @State private var showingError: Bool = false
     @State private var tokenUsageSummary: String = ""
-    @State private var pendingToolArgs: [String: String] = [:]
-    @State private var sectionReadCounts: [String: Int] = [:]
-    @State private var toolCallCounts: [String: Int] = [:]
     @State private var selectedReasoningEffort: ReasoningEffort? = .medium
     @State private var activeTask: Task<Void, Never>?
     @AppStorage("agentTelemetryEnabled") private var isTelemetryEnabled: Bool = false
@@ -75,18 +71,16 @@ public struct ProjectAgentGenerationWindow: View {
             headerSection
             Divider()
             HSplitView {
-                projectOverviewColumn
-                    .frame(minWidth: 250, idealWidth: 300, maxWidth: 400)
                 agentControlsColumn
-                    .frame(minWidth: 300, idealWidth: 350)
+                    .frame(minWidth: 320, idealWidth: 380)
                 generatedContentColumn
-                    .frame(minWidth: 350, idealWidth: 450)
+                    .frame(minWidth: 350, idealWidth: 500)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             Divider()
             footerSection
         }
-        .frame(minWidth: 1000, idealWidth: 1200, minHeight: 700)
+        .frame(minWidth: 800, idealWidth: 1000, minHeight: 600)
         .task {
             loadLLMConnections()
             initializeLLMSelection()
@@ -117,91 +111,11 @@ public struct ProjectAgentGenerationWindow: View {
         .background(.regularMaterial)
     }
 
-    // MARK: - Column 1: Project Overview
-
-    private var projectOverviewColumn: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Project Overview")
-                    .font(.headline)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("System Prompt")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Text(projectSystemPrompt?.isEmpty == false ? projectSystemPrompt! : "No system prompt configured")
-                        .font(.caption)
-                        .foregroundStyle(projectSystemPrompt?.isEmpty == false ? .primary : .secondary)
-                        .padding(8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Specification Sections (\(sections.count))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    ForEach(sections, id: \.name) { section in
-                        HStack(spacing: 6) {
-                            Image(systemName: section.isEnabled ? "checkmark.circle.fill" : "circle")
-                                .font(.caption2)
-                                .foregroundStyle(section.isEnabled ? .green : .secondary)
-                            Text(section.name)
-                                .font(.caption)
-                                .foregroundStyle(section.isEnabled ? .primary : .secondary)
-                            Spacer()
-                            if let count = sectionReadCounts[section.name], count > 0 {
-                                Text("\(count)×")
-                                    .font(.caption2)
-                                    .monospacedDigit()
-                                    .foregroundStyle(.blue)
-                                    .padding(.horizontal, 4)
-                                    .padding(.vertical, 1)
-                                    .background(.blue.opacity(0.12), in: Capsule())
-                            }
-                        }
-                    }
-                }
-
-                if !availableToolNames.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Available Tools (\(availableToolNames.count))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        ForEach(availableToolNames, id: \.self) { toolName in
-                            HStack(spacing: 6) {
-                                Image(systemName: "wrench")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                Text(toolName)
-                                    .font(.caption)
-                                Spacer()
-                                if let count = toolCallCounts[toolName], count > 0 {
-                                    Text("\(count)×")
-                                        .font(.caption2)
-                                        .monospacedDigit()
-                                        .foregroundStyle(.orange)
-                                        .padding(.horizontal, 4)
-                                        .padding(.vertical, 1)
-                                        .background(.orange.opacity(0.12), in: Capsule())
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            .padding()
-        }
-    }
-
-    // MARK: - Column 2: Agent Controls
+    // MARK: - Column 1: Agent Controls
 
     private var agentControlsColumn: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Agent Controls")
+            Text("Controls")
                 .font(.headline)
                 .padding(.horizontal)
                 .padding(.top)
@@ -311,10 +225,10 @@ public struct ProjectAgentGenerationWindow: View {
                 .padding(.horizontal)
             }
 
-            // Activity Log
+            // Activity Feed
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text("Activity Log")
+                    Text("Activity")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -325,6 +239,17 @@ public struct ProjectAgentGenerationWindow: View {
                     }
                 }
                 .padding(.horizontal)
+
+                if isRunning {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .scaleEffect(0.65)
+                        Text("Agent is working…")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal)
+                }
 
                 ActivityLogView(entries: activityLog)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -415,17 +340,6 @@ public struct ProjectAgentGenerationWindow: View {
         return false
     }
 
-    private var availableToolNames: [String] {
-        switch selectedBackend {
-        case .appleIntelligence:
-            return ["listSections", "readSection", "getUnreadSections", "readSystemPrompt"]
-        case .cloudConnection:
-            return ["list_sections_tool", "read_section_tool", "get_unread_sections_tool", "read_system_prompt_tool"]
-        case nil:
-            return []
-        }
-    }
-
     private var contentDisplayState: (text: String, isPlaceholder: Bool) {
         if isRunning && generatedContent.isEmpty {
             return ("Agent is running…", true)
@@ -481,9 +395,6 @@ public struct ProjectAgentGenerationWindow: View {
         generatedContent = ""
         errorMessage = nil
         tokenUsageSummary = ""
-        pendingToolArgs = [:]
-        sectionReadCounts = [:]
-        toolCallCounts = [:]
     }
 
     // MARK: - Backend Factory
@@ -526,27 +437,11 @@ public struct ProjectAgentGenerationWindow: View {
                 activityLog.append(ActivityLogEntry(kind: .status(status)))
             }
 
-        case .toolCallStarted(let callId, let name, let arguments):
-            pendingToolArgs[callId] = arguments
-            activityLog.append(ActivityLogEntry(kind: .toolCallStarted(
-                callId: callId, name: name, arguments: arguments
-            )))
+        case .toolCallStarted(_, let name, _):
+            activityLog.append(ActivityLogEntry(kind: .status("→ \(name)")))
 
-        case .toolCallCompleted(let callId, let name, let result, let duration):
-            let args = pendingToolArgs.removeValue(forKey: callId) ?? ""
-            if let index = activityLog.lastIndex(where: {
-                if case .toolCallStarted(let id, _, _) = $0.kind { return id == callId }
-                return false
-            }) {
-                activityLog[index] = ActivityLogEntry(kind: .toolCallCompleted(
-                    callId: callId, name: name, arguments: args, result: result, duration: duration
-                ))
-            } else {
-                activityLog.append(ActivityLogEntry(kind: .toolCallCompleted(
-                    callId: callId, name: name, arguments: args, result: result, duration: duration
-                )))
-            }
-            toolCallCounts[name, default: 0] += 1
+        case .toolCallCompleted:
+            break
 
         case .contentDelta(let delta):
             generatedContent += delta
@@ -570,8 +465,8 @@ public struct ProjectAgentGenerationWindow: View {
         case .activeToolChanged:
             break
 
-        case .sectionRead(let name):
-            sectionReadCounts[name, default: 0] += 1
+        case .sectionRead:
+            break
 
         case .completed(let content):
             generatedContent = content

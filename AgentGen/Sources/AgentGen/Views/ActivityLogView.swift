@@ -22,8 +22,6 @@ struct ActivityLogEntry: Identifiable {
         case status(String)
         case thinkingSummary(String)
         case thinkingBlock(String)
-        case toolCallStarted(callId: String, name: String, arguments: String)
-        case toolCallCompleted(callId: String, name: String, arguments: String, result: String, duration: Duration)
         case tokenUsage(String)
         case completed
         case failed(String)
@@ -80,10 +78,6 @@ private struct ActivityLogRow: View {
             ThinkingSummaryRow(summary: summary)
         case .thinkingBlock(let block):
             ThinkingBlockRow(block: block)
-        case .toolCallStarted(_, let name, _):
-            ToolCallInProgressRow(toolName: name)
-        case .toolCallCompleted(_, let name, let args, let result, let duration):
-            ToolCallCompletedRow(name: name, arguments: args, result: result, duration: duration)
         case .tokenUsage(let summary):
             TokenUsageRow(summary: summary)
         case .completed:
@@ -174,92 +168,6 @@ private struct ThinkingBlockRow: View {
             .filter { !$0.isEmpty }
             .count
         return "~\(words) words"
-    }
-}
-
-private struct ToolCallInProgressRow: View {
-    let toolName: String
-
-    var body: some View {
-        HStack(spacing: 8) {
-            ProgressView()
-                .scaleEffect(0.6)
-                .frame(width: 12, height: 12)
-            Text(toolName)
-                .font(.caption)
-                .fontWeight(.medium)
-            Spacer()
-            Text("running...")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .italic()
-        }
-        .padding(6)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
-    }
-}
-
-private struct ToolCallCompletedRow: View {
-    let name: String
-    let arguments: String
-    let result: String
-    let duration: Duration
-
-    @State private var isExpanded = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                Image(systemName: "function")
-                    .font(.caption)
-                    .foregroundStyle(.blue)
-                Text(name)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                Spacer()
-                Text(formattedDuration)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Button(isExpanded ? "Hide" : "Details") {
-                    isExpanded.toggle()
-                }
-                .font(.caption2)
-                .buttonStyle(.plain)
-                .foregroundStyle(.blue)
-            }
-
-            if isExpanded {
-                let hasArgs = !arguments.isEmpty && arguments != "{}"
-                if hasArgs {
-                    labeledBlock(label: "Arguments", content: arguments)
-                }
-                let resultPreview = result.count > 400
-                    ? String(result.prefix(400)) + "..."
-                    : result
-                labeledBlock(label: "Result", content: resultPreview)
-            }
-        }
-        .padding(6)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
-    }
-
-    private func labeledBlock(label: String, content: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label + ":")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            Text(content)
-                .font(.caption2)
-                .padding(4)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 4))
-        }
-    }
-
-    private var formattedDuration: String {
-        let ms = duration.components.seconds * 1000
-            + duration.components.attoseconds / 1_000_000_000_000_000
-        return "\(ms)ms"
     }
 }
 
